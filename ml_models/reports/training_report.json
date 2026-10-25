@@ -1,0 +1,280 @@
+{
+  "seed": 42,
+  "scoring_version": "synthetic_v1",
+  "rows": 20000,
+  "training_rows": 16000,
+  "test_rows": 4000,
+  "features": [
+    "historical_rain_risk",
+    "historical_heat_risk",
+    "historical_flood_risk",
+    "weather_forecast_risk",
+    "location_density",
+    "platform_volatility",
+    "experience_days",
+    "average_daily_income",
+    "historical_claim_rate",
+    "current_aqi",
+    "festival_season",
+    "season_factor"
+  ],
+  "feature_ranges": {
+    "historical_rain_risk": [
+      0,
+      100
+    ],
+    "historical_heat_risk": [
+      0,
+      100
+    ],
+    "historical_flood_risk": [
+      0,
+      100
+    ],
+    "weather_forecast_risk": [
+      0,
+      100
+    ],
+    "location_density": [
+      500,
+      40000
+    ],
+    "platform_volatility": [
+      0,
+      1
+    ],
+    "experience_days": [
+      0,
+      3650
+    ],
+    "average_daily_income": [
+      200,
+      2000
+    ],
+    "historical_claim_rate": [
+      0,
+      0.5
+    ],
+    "current_aqi": [
+      0,
+      500
+    ],
+    "festival_season": [
+      0,
+      1
+    ]
+  },
+  "season_categories": [
+    "winter",
+    "summer",
+    "monsoon",
+    "post_monsoon"
+  ],
+  "assumptions": {
+    "labels": "Synthetic weighted exposure index plus Gaussian noise (SD 3), clipped to 0-100.",
+    "ranges": "Hypothetical simulation bounds, not measured Indian worker/city distributions.",
+    "missingness": "Default generator hides 2% of context cells after labeling; inference requires complete inputs.",
+    "preprocessing": "Numeric median and season mode/one-hot fitted inside each training fold.",
+    "validation": "Random worker-week split; no genuine city/time or real insurance validation.",
+    "recipe_documentation": "ml_models/README.md; generate_data.py synthetic_v1"
+  },
+  "missing_counts": {
+    "historical_rain_risk": 430,
+    "historical_heat_risk": 404,
+    "historical_flood_risk": 369,
+    "weather_forecast_risk": 376,
+    "location_density": 407,
+    "platform_volatility": 432,
+    "experience_days": 0,
+    "average_daily_income": 0,
+    "historical_claim_rate": 391,
+    "current_aqi": 376,
+    "festival_season": 0,
+    "season_factor": 392
+  },
+  "versions": {
+    "python": "3.11.9",
+    "sklearn": "1.9.1",
+    "pandas": "2.3.3",
+    "numpy": "2.4.6",
+    "joblib": "1.6.0"
+  },
+  "interpretation": "Synthetic scoring-process fidelity, not real insurance risk accuracy.",
+  "cross_validation": {
+    "random_forest": {
+      "r2": {
+        "folds": [
+          0.8711802075597319,
+          0.8771569588844831,
+          0.8770077564688303,
+          0.8753887651809128,
+          0.877252542118447
+        ],
+        "mean": 0.8755972460424811,
+        "std": 0.0023115337825427343
+      },
+      "mae": {
+        "folds": [
+          3.0789352532388445,
+          2.8795230226831396,
+          2.9801425583074352,
+          2.9807753310591125,
+          2.9719443611900362
+        ],
+        "mean": 2.9782641052957137,
+        "std": 0.06314151634195074
+      },
+      "rmse": {
+        "folds": [
+          3.8642037155657696,
+          3.647514329046418,
+          3.7498877033504123,
+          3.728113086279356,
+          3.7196111794769693
+        ],
+        "mean": 3.741866002743785,
+        "std": 0.07016768751860923
+      }
+    },
+    "dummy": {
+      "r2": {
+        "folds": [
+          -0.000491067913280574,
+          -0.0006423793158638613,
+          -4.864269436000157e-05,
+          -0.00012878381698433472,
+          -0.0002541193438534428
+        ],
+        "mean": -0.00031299861686844287,
+        "std": 0.0002224797672813543
+      },
+      "mae": {
+        "folds": [
+          8.847849084726564,
+          8.469740334189453,
+          8.70818031293457,
+          8.593602226264649,
+          8.6660361696875
+        ],
+        "mean": 8.657081625560547,
+        "std": 0.12506788298846733
+      },
+      "rmse": {
+        "folds": [
+          10.768998689138284,
+          10.410250335134537,
+          10.692763536564986,
+          10.56181219818331,
+          10.618091545261237
+        ],
+        "mean": 10.61038326085647,
+        "std": 0.12199763739558248
+      }
+    }
+  },
+  "held_out_test": {
+    "random_forest": {
+      "r2": 0.8700733300587107,
+      "mae": 2.9858862605962377,
+      "rmse": 3.787365557632972
+    },
+    "dummy": {
+      "r2": -0.000359790690248607,
+      "mae": 8.507530884353125,
+      "rmse": 10.50911598326489
+    }
+  },
+  "training_metrics": {
+    "r2": 0.9677815871185794,
+    "mae": 1.4754541104913783,
+    "rmse": 1.9045287738284562
+  },
+  "forest_parameters": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "criterion": "squared_error",
+    "max_depth": 16,
+    "max_features": 1.0,
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 3,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 120,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "impurity_importance_encoded": {
+    "numeric__historical_rain_risk": 0.5044675624177124,
+    "numeric__weather_forecast_risk": 0.19881996902612528,
+    "numeric__historical_claim_rate": 0.08301716488353908,
+    "numeric__historical_flood_risk": 0.07693931465945811,
+    "numeric__historical_heat_risk": 0.040076081908893585,
+    "numeric__location_density": 0.026886753608213253,
+    "numeric__experience_days": 0.02205863436188588,
+    "numeric__platform_volatility": 0.018209203100523322,
+    "numeric__current_aqi": 0.010148156539158333,
+    "numeric__festival_season": 0.008269038265542561,
+    "numeric__average_daily_income": 0.007897086673073544,
+    "season__season_factor_monsoon": 0.0012148296318449823,
+    "season__season_factor_summer": 0.0007731103487331755,
+    "season__season_factor_post_monsoon": 0.0006170910173967877,
+    "season__season_factor_winter": 0.0006060035578996546
+  },
+  "training_permutation_importance": {
+    "weather_forecast_risk": {
+      "mean_r2_drop": 0.39721279319396513,
+      "std": 0.002447150253765506
+    },
+    "historical_rain_risk": {
+      "mean_r2_drop": 0.24865191114394458,
+      "std": 0.003286404930728801
+    },
+    "historical_flood_risk": {
+      "mean_r2_drop": 0.14546519612726114,
+      "std": 0.00140410545884755
+    },
+    "historical_claim_rate": {
+      "mean_r2_drop": 0.09535515180341696,
+      "std": 0.0009221291312283835
+    },
+    "historical_heat_risk": {
+      "mean_r2_drop": 0.08411209550460097,
+      "std": 0.0002074370192835359
+    },
+    "location_density": {
+      "mean_r2_drop": 0.042664222795925445,
+      "std": 0.000515163014523917
+    },
+    "experience_days": {
+      "mean_r2_drop": 0.03696894968822181,
+      "std": 0.0005995766463388742
+    },
+    "platform_volatility": {
+      "mean_r2_drop": 0.02527682251208781,
+      "std": 0.0002953951971044043
+    },
+    "festival_season": {
+      "mean_r2_drop": 0.01549995161994481,
+      "std": 0.00014585113038495233
+    },
+    "current_aqi": {
+      "mean_r2_drop": 0.009772484466821848,
+      "std": 8.478234690786686e-05
+    },
+    "average_daily_income": {
+      "mean_r2_drop": 0.006555900330950437,
+      "std": 6.0166271352316525e-05
+    },
+    "season_factor": {
+      "mean_r2_drop": 0.0033366850168704185,
+      "std": 4.515962852304377e-05
+    }
+  },
+  "dataset_sha256": "d686088687b17c57e05a60e752b2168bc5b1ab5b6358a80e58dac94b49f4de82"
+}

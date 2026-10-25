@@ -1,0 +1,14 @@
+{
+  "historical_rain_risk": 65,
+  "historical_heat_risk": 45,
+  "historical_flood_risk": 40,
+  "weather_forecast_risk": 70,
+  "season_factor": "monsoon",
+  "location_density": 12000,
+  "platform_volatility": 0.3,
+  "experience_days": 180,
+  "average_daily_income": 600,
+  "historical_claim_rate": 0.12,
+  "current_aqi": 110,
+  "festival_season": 0
+}

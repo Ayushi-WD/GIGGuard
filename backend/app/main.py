@@ -1,4 +1,4 @@
-"""FastAPI entry point for the GIG-Guard backend."""
+"""FastAPI entry point for backend."""
 
 from contextlib import asynccontextmanager
 
@@ -37,11 +37,11 @@ app.include_router(pricing_router)
 
 @app.get("/")
 def root() -> dict[str, str]:
-    """Return a welcome message identifying this API."""
+    """Return a welcome message for the API."""
     return {"message": "Welcome to GIG-Guard API"}
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Confirm that the API can respond to requests."""
+    """Confirm  the API can respond to requests."""
     return {"status": "ok"}
