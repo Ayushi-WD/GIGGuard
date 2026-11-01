@@ -1,8 +1,8 @@
 # Synthetic Random Forest risk prototype
 
-This standalone experiment predicts a **synthetic 0–100 risk index**, not a
-probability of a real claim. It neither reads worker databases nor changes the
-working FastAPI pricing endpoint. The endpoint still accepts a simulated score.
+This prototype predicts a **synthetic 0–100 risk index**, not a probability of a
+real claim. FastAPI now exposes separate prediction and ML-pricing endpoints.
+The original manual-score pricing endpoint is preserved.
 No weather API, frontend, fraud detection, or payment code is included.
 
 ## Files
@@ -11,7 +11,8 @@ No weather API, frontend, fraud detection, or payment code is included.
 - `generate_data.py`: creates 20,000 correlated simulated profiles and labels.
 - `train_model.py`: preprocessing pipeline, training, five-fold validation,
   baseline comparison, held-out evaluation, importance, and artifact saving.
-- `predict.py`: loads the saved pipeline and exposes `predict_risk(worker_features)`.
+- `predict.py`: loads the saved pipeline and exposes `predict_risk(worker_features)`;
+  it can also reuse a cached pipeline supplied by the backend.
 - `sample_worker.json`: complete example observations, all fictional.
 - `tests/test_ml.py`: small, fast training fixtures; no development data used.
 - `requirements.txt`: ML dependencies, separate from backend dependencies.
@@ -155,7 +156,8 @@ festival flags are rejected with ValueError. A missing artifact raises a clear
 FileNotFoundError with the training command. There are no silent inference
 defaults. Training can impute explicit missing observations, but the public
 prediction function deliberately requires complete supplied information.
-Scores are bounded to 0–100; this is a numeric index, not calibrated probability.
+Scores must be finite and within 0–100; invalid model output raises an error
+(HTTP 503 through FastAPI). This is an index, not calibrated probability.
 
 Only load joblib artifacts you created or trust: loading pickle-based files can
 execute code. The artifact records versions; loading rejects a different
@@ -165,11 +167,11 @@ changes is not guaranteed. Input bounds reflect this synthetic training domain;
 valid backend workers outside these bounds are not supported by this ML prototype.
 
 Floating-point calculations are standard here for statistical modeling. Monetary
-premium calculations remain in the backend's Decimal service. Later an explicit
-integration can collect and validate all 12 features, call `predict_risk`, convert
-the numeric score using `Decimal(str(score))`, and pass it to `calculate_premium`.
-That integration has **not** been added; the existing API still reports
-`calculation_method: "simulated_risk_score"`.
+premium calculations remain in the backend's Decimal service. The new integration
+validates all 12 features, calls `predict_risk` with the cached pipeline, converts
+the numeric score using `Decimal(str(score))`, and calls `calculate_premium`.
+The original API still reports `calculation_method: "simulated_risk_score"`;
+the separate ML endpoint reports `random_forest_synthetic_v1`.
 
 ## Beginner explanations
 
@@ -258,3 +260,173 @@ Verification commands above actually executed:
   generated locally and ignored by Git. The small report remains reviewable.
 - Backend source, pricing API, and worker records were not changed.
 - No commits or pushes were made.
+
+## FastAPI integration
+
+- `POST /risk/predict`: accepts all 12 features and returns a synthetic-trained prediction.
+- `POST /pricing/estimate-ml`: accepts 10 environmental/history features plus a
+  worker UUID, location category and optional working days. Saved worker income
+  and experience complete the model input; request overrides are rejected.
+- The manual `/pricing/estimate` endpoint, worker endpoints, root and health are preserved.
+- `backend/app/__init__.py` adds the checkout root to Python's import path so
+  `ml_models` imports work when Uvicorn starts from `backend`. No laptop paths
+  are hardcoded. Keep `backend` and `ml_models` together when deploying.
+- `backend/app/services/risk.py` uses the existing `load_model` and caches the
+  artifact once per process. A lock prevents duplicate first loads. It does not
+  fit a model. Restart after replacing the artifact or dependency versions.
+- `backend/app/risk_schemas.py` validates requests and defines model metadata.
+  Numeric bounds and season categories come from the shared feature contract;
+  the shared validator checks the completed 12-feature input as well.
+- `backend/app/routers/risk.py` reads SQLite, calls prediction, converts the score
+  with `Decimal(str(score))`, and reuses `calculate_premium`. No new formula,
+  tables, quotes, or worker updates are created.
+- `ml_models/predict.py` accepts an optional preloaded pipeline and rejects
+  non-finite or out-of-range outputs. Its existing CLI remains available.
+- `backend/requirements.txt` now includes the ML requirement file. Install it
+  before starting the backend. The saved artifact must match its recorded
+  scikit-learn version; loading a different version returns 503.
+- Model missing/corrupt/incompatible, inference failure or invalid output: safe
+  503 with preparation instructions, without internal paths or exception text.
+- Missing/invalid features or stored values outside the model domain: 422.
+  Unknown worker: 404. No environmental values are guessed or fetched online.
+- Normal API tests use controlled pipelines and temporary databases. No full
+  model training or artifact regeneration was performed for integration.
+
+### Start and try both endpoints
+
+```powershell
+# From the repository folder; reuse the existing virtual environment.
+.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8001
+```
+
+If the artifact is absent on a new checkout, stop the server and use the existing
+generation/training commands earlier in this README from the repository root.
+Never run them automatically in a request. Only load a locally trusted joblib file.
+
+Open `http://127.0.0.1:8001/docs`. Expand an endpoint and select **Try it out**.
+For `/risk/predict`, this complete fictional request matches `sample_worker.json`:
+
+```json
+{
+  "historical_rain_risk": 65,
+  "historical_heat_risk": 45,
+  "historical_flood_risk": 40,
+  "weather_forecast_risk": 70,
+  "season_factor": "monsoon",
+  "location_density": 12000,
+  "platform_volatility": 0.3,
+  "experience_days": 180,
+  "average_daily_income": 600,
+  "historical_claim_rate": 0.12,
+  "current_aqi": 110,
+  "festival_season": 0
+}
+```
+
+Actual response from the saved pipeline:
+
+```json
+{
+  "predicted_risk_score": 46.41845042342158,
+  "model_name": "RandomForestRegressor",
+  "model_version": "experimental_v1",
+  "prediction_source": "synthetic_trained_model"
+}
+```
+
+For an ML premium, first register this worker through `/workers`, or use an
+existing worker and copy its ID from `GET /workers`:
+
+```json
+{
+  "full_name": "Rahul Sharma",
+  "city": "Bengaluru",
+  "platform": "Swiggy",
+  "average_daily_income": "600.00",
+  "experience_days": 180
+}
+```
+
+The isolated demonstration generated ID `97ad2fa1-298a-4106-8c67-8f782bc67a35`.
+It is not in your development database. **Replace it with your own registered ID**:
+
+```json
+{
+  "worker_id": "97ad2fa1-298a-4106-8c67-8f782bc67a35",
+  "historical_rain_risk": 65,
+  "historical_heat_risk": 45,
+  "historical_flood_risk": 40,
+  "weather_forecast_risk": 70,
+  "season_factor": "monsoon",
+  "location_density": 12000,
+  "platform_volatility": 0.3,
+  "historical_claim_rate": 0.12,
+  "current_aqi": 110,
+  "festival_season": 0,
+  "location_risk": "high",
+  "work_days_per_week": 6
+}
+```
+
+Actual HTTP 200 response from `/pricing/estimate-ml` with the saved model:
+
+```json
+{
+  "predicted_risk_score": 46.41845042342158,
+  "model_name": "RandomForestRegressor",
+  "model_version": "experimental_v1",
+  "prediction_source": "synthetic_trained_model",
+  "worker_id": "97ad2fa1-298a-4106-8c67-8f782bc67a35",
+  "weekly_income": "3600.00",
+  "base_premium": "72.00",
+  "risk_loading": "50.13",
+  "subtotal": "122.13",
+  "location_adjustment": "12.21",
+  "experience_adjustment": "-9.77",
+  "raw_premium": "124.57",
+  "final_weekly_premium": "99.00",
+  "calculation_method": "random_forest_synthetic_v1"
+}
+```
+
+The unchanged calculator uses income × days, base = weekly income × 2%, loading
+= weekly income × score/100 × 3%, then location and experience adjustments on
+the subtotal. It clamps to INR 49–99 and rounds output money with ROUND_HALF_UP.
+Tiny last-digit floating-point variation is possible in parallel forest
+predictions; model comparisons use a numerical tolerance. Monetary calculations
+remain Decimal-based. This example reaches the upper premium cap.
+
+### Integration verification and viva preparation
+
+- Complete backend suite: **151 passed, 0 failed, 1 warning in 6.14s**.
+  This includes 73 original cases and 78 new integration cases.
+- Existing ML suite: **38 passed, 0 failed in 11.92s**.
+- Dependency check: **No broken requirements found**.
+- The existing Starlette/HTTPX deprecation warning remains; it was not suppressed.
+- Real saved-artifact TestClient demonstration: worker registration 201, risk
+  prediction 200, ML premium 200. The worker remained unchanged. A cache reset
+  and SQLite reopen reproduced the premium and score within numerical tolerance.
+- The first smoke check used exact float equality and failed on a last-digit
+  difference. The corrected check uses tolerance; no model retraining was needed.
+- Both new routes and the manual route appear in TestClient OpenAPI; `/docs` is 200.
+- Live server verification on port 8001: `/docs` returned 200, both new routes
+  and manual pricing appeared in OpenAPI, and `/risk/predict` returned 200 with
+  the real saved-model score 46.41845042342158. No live worker rows were added.
+- Restart testing reopens SQLite and clears the model cache to simulate a new
+  process; it does not claim to be a deployed-server resilience test.
+
+Run backend tests from `backend`, and ML tests from the repository root using
+the commands above. To run only the new integration cases from `backend`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_ml_integration.py -q
+```
+
+For your viva, study: SQLAlchemy lookup by UUID; the 12-feature contract; pipeline
+imputation and encoding; forest regression; training/test leakage; cached loading;
+422 versus 404 versus 503; Decimal conversion and the premium cap. Explain the
+flow as “registered worker → SQLite values + supplied context → saved pipeline
+→ predicted index → existing premium calculator.” Always state that the model
+was trained on synthetic labels, not real-world claims or measured insurance outcomes.
