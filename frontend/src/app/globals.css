@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f5f2e9;
+  --color-paper: #fffdf8;
+  --color-ink: #10251b;
+  --color-forest: #0c5a42;
+  --color-forest-dark: #073b2b;
+  --color-forest-light: #e5f2e9;
+  --color-moss: #50735f;
+  --color-muted: #627268;
+  --color-sand: #e7e0d1;
+  --color-lime: #d9f36a;
+  --color-lime-soft: #f0f8cc;
+  --color-rain: #3b78d8;
+  --color-heat: #df7738;
+  --color-smog: #8665b3;
+  --color-danger: #b94a3d;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --shadow-soft: 0 24px 60px -30px rgba(16, 37, 27, 0.35);
+  --shadow-card:
+    0 1px 1px rgba(16, 37, 27, 0.04),
+    0 18px 40px -28px rgba(16, 37, 27, 0.35);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-forest);
+    outline-offset: 3px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-forest;
+  }
+
+  .card-surface {
+    @apply rounded-3xl border border-ink/10 bg-paper shadow-card;
+  }
+
+  .field-label {
+    @apply mb-2 block text-sm font-semibold text-ink;
+  }
+
+  .field-hint {
+    @apply mt-1.5 text-xs leading-relaxed text-muted;
+  }
+
+  .field-input {
+    @apply w-full rounded-xl border border-ink/15 bg-paper px-4 py-3 text-[0.95rem] text-ink shadow-sm outline-none transition placeholder:text-muted/55 focus:border-forest focus:ring-4 focus:ring-forest/10;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-xs font-medium text-danger;
+  }
+
+  .bg-dot-grid {
+    background-image: radial-gradient(rgba(16, 37, 27, 0.13) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .bg-grid-lines {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .status-dot {
+    @apply inline-block size-2 rounded-full bg-lime;
+    box-shadow: 0 0 0 4px rgba(217, 243, 106, 0.14);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+
+.animate-rise {
+  animation: rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-float {
+  animation: float 7s ease-in-out infinite;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-rise,
+  .animate-float,
+  .animate-soft-pulse {
+    animation: none !important;
+  }
+}
