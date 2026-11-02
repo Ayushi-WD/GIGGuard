@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import {
@@ -157,7 +156,7 @@ function AuthContent() {
 
     setLoading(true);
     try {
-      const user = await signup({
+      await signup({
         username: signupForm.username.trim(),
         password: signupForm.password,
         full_name: signupForm.full_name.trim(),

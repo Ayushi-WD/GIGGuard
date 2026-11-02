@@ -64,18 +64,19 @@ cd backend
 
 ## Run the Frontend
 
-- Install Node.js 20 or newer, then run these commands from the repository folder:
+- Install Node.js 20 or newer and pnpm 11, then run these commands from the repository folder:
 
 ```powershell
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 - Open http://localhost:3000.
 - Start the backend first so registration, dashboards and premium estimates can load real data.
 - The frontend proxies `/api/backend/*` to `http://127.0.0.1:8001` through a Next.js rewrite. To use another API URL, copy `frontend/.env.example` to `frontend/.env.local` and change `BACKEND_URL`.
-- Build and lint with `npm run build` and `npm run lint`.
+- Build, lint and type-check with `pnpm build`, `pnpm lint` and `pnpm exec tsc --noEmit`.
+- pnpm settings (build approvals and security overrides) live in `frontend/pnpm-workspace.yaml`.
 
 ## Prepare the Model
 

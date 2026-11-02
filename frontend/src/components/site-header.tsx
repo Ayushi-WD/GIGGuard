@@ -21,7 +21,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { user, isLoggedIn, isAdmin, isWorker, logout } = useAuth();
+  const { user, isLoggedIn, isAdmin, logout } = useAuth();
 
   // Dynamic nav links according to authentication status and role
   let navLinks: { href: string; label: string }[] = [{ href: "/", label: "Home" }];

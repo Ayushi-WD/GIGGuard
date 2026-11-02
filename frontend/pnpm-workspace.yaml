@@ -1,2 +1,12 @@
 allowBuilds:
   unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - minimatch@11.0.4
+
+# ESLint 10 pulls minimatch 10.x, which is affected by GHSA-g3hv-75wg-m249.
+# The fix only ships in minimatch 11.x, so pin the affected edges to it.
+overrides:
+  "eslint>minimatch": "^11.0.4"
+  "@eslint/config-array>minimatch": "^11.0.4"
+  "@typescript-eslint/typescript-estree>minimatch": "^11.0.4"

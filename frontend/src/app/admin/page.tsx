@@ -64,12 +64,10 @@ export default function AdminPage() {
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [policies, setPolicies] = useState<PolicyRecord[]>([]);
   const [tab, setTab] = useState<Tab>("workers");
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setClaims(getAllClaims());
     setPolicies(getAllPolicies());
-    setReady(true);
   }, []);
 
   function handleStatus(claimId: string, status: ClaimStatus) {
