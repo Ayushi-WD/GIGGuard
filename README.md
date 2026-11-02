@@ -5,27 +5,41 @@
 
 ## Work Done
 
-- Built the FastAPI backend and worker registration APIs.
-- Saved worker profiles in SQLite using SQLAlchemy.
+- Built the FastAPI backend with authentication, worker registration and pricing APIs.
+- Saved user credentials and worker profiles in SQLite using SQLAlchemy.
 - Added a weekly premium calculator with a range of INR 49–99.
+- Built the Next.js frontend with authentication (Login/Sign Up with password), landing, worker dashboard, premium calculator, policy & claims and admin console.
+- Added role-based access control: visitors only see Home and Login; logged-in workers see Dashboard and Policy & Claims with profile icon and Logout; administrators see Admin console with default credentials.
+- Connected registration, dashboard and pricing pages to the live API with typed Fetch API calls.
+- Added a browser-local prototype flow for activating weekly policies, filing claims and reviewing them in the admin console.
 - Tested the APIs through Swagger UI.
 - Completed a separate Random Forest risk prediction prototype in `ml_models/`.
 - Used 12 features and 20,000 synthetic worker-risk profiles.
-- Used an 80/20 train-test split and five-fold cross-validation on training data.
 - Held-out R² = 0.8701, MAE = 2.9859 and RMSE = 3.7874.
-- Last verified tests: 73 backend tests and 38 ML tests passed.
+- Last verified tests: 77 backend tests and 38 ML tests passed.
 
 ## Tech Used
 
 - Backend: Python and FastAPI.
+- Frontend: Next.js 16 (App Router), React 19, TypeScript and Tailwind CSS 4.
 - Database: SQLite and SQLAlchemy.
 - ML: pandas, NumPy, scikit-learn and joblib.
 - Testing: pytest.
+
+## Default Credentials
+- **Admin account**:
+  - Username: `admin`
+  - Password: `admin123`
+- **Worker accounts**:
+  - Sign up via `/login?tab=signup` with your chosen username, password, and gig delivery profile.
 
 ## API Endpoints
 
 - `GET /` — Welcome message.
 - `GET /health` — Backend status.
+- `POST /auth/login` — Login for workers and administrators.
+- `POST /auth/signup` — Create a new user account with password and gig delivery profile.
+- `GET /auth/users` — List registered users.
 - `POST /workers` — Register a worker.
 - `GET /workers` — List workers.
 - `GET /workers/{worker_id}` — Get one worker's profile.
@@ -45,24 +59,27 @@ cd backend
 - Open http://127.0.0.1:8001/docs to try the APIs.
 - From `backend`, run tests with `.\.venv\Scripts\python.exe -m pytest -q`.
 
-## Run the ML Prototype
+## Run the Frontend
 
-- Run these commands from the repository folder:
+- Install Node.js 20 or newer, then run these commands from the repository folder:
 
 ```powershell
-.\backend\.venv\Scripts\python.exe -m pip install -r ml_models\requirements.txt
-.\backend\.venv\Scripts\python.exe -m ml_models.generate_data
-.\backend\.venv\Scripts\python.exe -m ml_models.train_model
-.\backend\.venv\Scripts\python.exe -m ml_models.predict --input ml_models\sample_worker.json
-.\backend\.venv\Scripts\python.exe -m pytest ml_models\tests -q
+cd frontend
+npm install
+npm run dev
 ```
 
-- Training saves the model and an evaluation report locally.
-- See [ML notes](ml_models/README.md) for the feature details and scoring assumptions.
+- Open http://localhost:3000.
+- Start the backend first so registration, dashboards and premium estimates can load real data.
+- The frontend proxies `/api/backend/*` to `http://127.0.0.1:8001` through a Next.js rewrite. To use another API URL, copy `frontend/.env.example` to `frontend/.env.local` and change `BACKEND_URL`.
+- Build and lint with `npm run build` and `npm run lint`.
 
-## Current Limits and Next Steps
+## Frontend Pages
 
-- The model uses synthetic data, not real insurance outcomes. Its scores do not prove real-world accuracy.
-- The model is not yet integrated into FastAPI. The pricing API still accepts a manually simulated risk score.
-- Next steps are model integration, the Next.js dashboard, weather triggers, payout calculations, fraud checks and PostgreSQL.
-- Real insurance payments are not implemented.
+- `/` — Landing page with the GIG-Guard pitch, rain/heat/pollution cover and dynamic header according to login state.
+- `/login` — Unified authentication page with **Log in** and **Sign up** tabs, password creation, validation, and admin quick-fill.
+- `/dashboard` — Saved worker profile hub backed by `GET /workers` (requires worker/admin login).
+- `/dashboard/{workerId}` — Worker profile backed by `GET /workers/{worker_id}`.
+- `/dashboard/{workerId}/premium` — Premium calculator connected to `POST /pricing/estimate`, with the full breakdown and a ₹49–₹99 final range.
+- `/policy` — Weekly policy activation, coverage details, claim filing and claim history (requires login).
+- `/admin` — Admin portfolio and claim review queue (only visible and accessible to `admin`).

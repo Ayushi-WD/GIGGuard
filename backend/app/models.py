@@ -1,13 +1,13 @@
-"""Persistent worker table, including exact INR storage."""
+"""Persistent worker and user tables, including exact INR storage."""
 
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum as SQLEnum
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy import Integer, Numeric, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
 from app.database import Base
@@ -17,6 +17,11 @@ class Platform(str, Enum):
     SWIGGY = "Swiggy"
     ZOMATO = "Zomato"
     ZEPTO = "Zepto"
+
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    WORKER = "worker"
 
 
 class INRAmount(TypeDecorator):
@@ -72,3 +77,26 @@ class Worker(Base):
         DateTime(timezone=True), nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    username: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        SQLEnum(UserRole, native_enum=False, create_constraint=True,
+                values_callable=lambda items: [item.value for item in items]),
+        nullable=False,
+        default=UserRole.WORKER,
+    )
+    worker_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("workers.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    worker: Mapped[Worker | None] = relationship()
