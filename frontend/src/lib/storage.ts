@@ -1,4 +1,5 @@
 import type {
+  AuthUser,
   LocationRisk,
   Platform,
   PricingEstimate,
@@ -7,6 +8,7 @@ import type {
 
 const KEYS = {
   activeWorker: "gigguard.activeWorkerId",
+  authUser: "gigguard.auth_user",
   estimates: "gigguard.estimates",
   policies: "gigguard.policies",
   claims: "gigguard.claims",
@@ -78,8 +80,7 @@ function write<T>(key: string, value: T) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Storage can be unavailable in private browsing. The UI still works for
-    // the current session because each page also keeps local React state.
+    // Storage can be unavailable in private browsing.
   }
 }
 
@@ -88,6 +89,32 @@ function makeId(prefix: string) {
     return `${prefix}_${window.crypto.randomUUID()}`;
   }
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function getAuthUser(): AuthUser | null {
+  return read<AuthUser | null>(KEYS.authUser, null);
+}
+
+export function saveAuthUser(user: AuthUser) {
+  write(KEYS.authUser, user);
+  if (user.worker_id) {
+    rememberWorker(user.worker_id);
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("gigguard-auth-change"));
+  }
+}
+
+export function clearAuthUser() {
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem(KEYS.authUser);
+    } catch {
+      // Ignore storage errors.
+    }
+    forgetWorker();
+    window.dispatchEvent(new Event("gigguard-auth-change"));
+  }
 }
 
 export function getActiveWorkerId() {
@@ -258,19 +285,14 @@ export function createClaim({
 }
 
 export function seedDemoClaims(workers: Worker[]) {
-  const disruptions: Disruption[] = ["Rain", "Heat", "Pollution"];
-  const notes = [
-    "Heavy rain stopped deliveries for the evening rush.",
-    "Heat advisory in the afternoon; had to pause orders.",
-    "Air quality spike made outdoor work unsafe for a few hours.",
-  ];
-
   workers.slice(0, 3).forEach((worker, index) => {
     const hoursLost = [4, 3, 5][index] ?? 4;
-    const payout = Math.round(
-      (Number(worker.average_daily_income) * (hoursLost / 8) + Number.EPSILON) *
-        100,
-    ) / 100;
+    const notes = [
+      "Heavy rain stopped deliveries for the evening rush.",
+      "Heat advisory in the afternoon; had to pause orders.",
+      "Air quality spike made outdoor work unsafe for a few hours.",
+    ];
+    const disruptions: Disruption[] = ["Rain", "Heat", "Pollution"];
 
     addClaim({
       id: makeId("clm"),
@@ -284,7 +306,10 @@ export function seedDemoClaims(workers: Worker[]) {
         .slice(0, 10),
       hoursLost,
       description: notes[index] ?? notes[0],
-      payout,
+      payout: Math.round(
+        (Number(worker.average_daily_income) * (hoursLost / 8) + Number.EPSILON) *
+          100,
+      ) / 100,
       status: index === 2 ? "Approved" : "Under review",
       createdAt: new Date(Date.now() - index * 3_600_000).toISOString(),
     });

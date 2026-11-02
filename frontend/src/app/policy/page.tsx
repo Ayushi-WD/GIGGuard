@@ -16,6 +16,8 @@ import {
   Flame,
   Info,
   LoaderCircle,
+  Lock,
+  LogIn,
   MapPin,
   ShieldCheck,
   Wind,
@@ -52,6 +54,7 @@ import {
   type PolicyRecord,
   type SavedEstimate,
 } from "@/lib/storage";
+import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
 
 const disruptionMeta: Record<
@@ -76,6 +79,7 @@ const disruptionMeta: Record<
 };
 
 export default function PolicyPage() {
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const { workers, loading, error, reload } = useWorkers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [policy, setPolicy] = useState<PolicyRecord | null>(null);
@@ -97,13 +101,17 @@ export default function PolicyPage() {
     workers.find((worker) => worker.id === selectedId) ?? workers[0] ?? null;
 
   useEffect(() => {
-    const activeId = getActiveWorkerId();
-    if (activeId) {
-      setSelectedId(activeId);
-    } else if (workers.length > 0) {
-      setSelectedId(workers[0].id);
+    if (user?.worker_id) {
+      setSelectedId(user.worker_id);
+    } else {
+      const activeId = getActiveWorkerId();
+      if (activeId) {
+        setSelectedId(activeId);
+      } else if (workers.length > 0) {
+        setSelectedId(workers[0].id);
+      }
     }
-  }, [workers]);
+  }, [workers, user]);
 
   useEffect(() => {
     if (!selectedWorker) {
@@ -189,6 +197,42 @@ export default function PolicyPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="page-container py-10 sm:py-16">
+        <LoadingState label="Checking authorization…" />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="page-container py-16 sm:py-24">
+        <div className="mx-auto max-w-md rounded-3xl border border-ink/10 bg-paper p-8 text-center shadow-soft">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-forest-light text-forest">
+            <Lock aria-hidden="true" className="size-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
+            Sign in to view Policy &amp; Claims
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Please log in with your worker account to view your weekly policy, check active coverage, and file weather disruption claims.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-2.5">
+            <ButtonLink href="/login" size="lg" className="w-full">
+              <LogIn aria-hidden="true" className="size-4" />
+              Log in to account
+            </ButtonLink>
+            <ButtonLink href="/login?tab=signup" variant="secondary" className="w-full">
+              New user? Sign up here
+            </ButtonLink>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="page-container py-10 sm:py-16">
@@ -227,7 +271,7 @@ export default function PolicyPage() {
             title="Register a worker first"
             description="Policies are linked to a worker profile. Create a profile, calculate a premium, and your weekly cover will show up here."
             action={
-              <ButtonLink href="/register" size="md">
+              <ButtonLink href="/login?tab=signup" size="md">
                 Register as a worker
                 <ArrowRight aria-hidden="true" className="size-4" />
               </ButtonLink>

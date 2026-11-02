@@ -1,20 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Menu, ShieldCheck, User, X } from "lucide-react";
 
 import { Logo } from "@/components/logo";
 import { buttonClasses } from "@/components/ui/button";
-import { cn } from "@/lib/format";
-
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/policy", label: "Policy & claims" },
-  { href: "/admin", label: "Admin" },
-];
+import { cn, initials } from "@/lib/format";
+import { useAuth } from "@/lib/use-auth";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") {
@@ -25,7 +19,38 @@ function isActive(pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, isLoggedIn, isAdmin, isWorker, logout } = useAuth();
+
+  // Dynamic nav links according to authentication status and role
+  let navLinks: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
+
+  if (isLoggedIn) {
+    if (isAdmin) {
+      // Admin sees Home and Admin Dashboard
+      navLinks = [
+        { href: "/", label: "Home" },
+        { href: "/admin", label: "Admin" },
+      ];
+    } else {
+      // Worker sees Home, Dashboard, and Policy & claims (NO Admin!)
+      navLinks = [
+        { href: "/", label: "Home" },
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/policy", label: "Policy & claims" },
+      ];
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    setMenuOpen(false);
+    router.push("/");
+  }
+
+  const displayName = user?.full_name || user?.username || "User";
+  const userInitials = initials(displayName);
 
   return (
     <header className="sticky top-0 z-50 border-b border-ink/10 bg-cream/85 backdrop-blur-xl">
@@ -53,16 +78,62 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Link
-            href="/register"
-            className={buttonClasses({ size: "md" })}
-          >
-            Register as worker
-            <ArrowUpRight aria-hidden="true" className="size-4" />
-          </Link>
+        {/* Right side authentication actions */}
+        <div className="hidden items-center gap-3 md:flex">
+          {!isLoggedIn ? (
+            <Link
+              href="/login"
+              className={buttonClasses({ size: "md" })}
+            >
+              <LogIn aria-hidden="true" className="size-4" />
+              Log in
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-xs",
+                  isAdmin
+                    ? "border-forest/25 bg-forest-light/60 text-forest"
+                    : "border-ink/10 bg-paper text-ink",
+                )}
+              >
+                <div
+                  className={cn(
+                    "grid size-6 place-items-center rounded-full text-[11px] font-semibold text-cream",
+                    isAdmin ? "bg-forest text-lime" : "bg-forest",
+                  )}
+                >
+                  {isAdmin ? (
+                    <ShieldCheck aria-hidden="true" className="size-3.5" />
+                  ) : (
+                    userInitials
+                  )}
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="max-w-[130px] truncate font-semibold leading-tight text-ink">
+                    {displayName}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted">
+                    {isAdmin ? "Admin" : (user?.worker?.platform ?? "Worker")}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-paper px-3 py-2 text-xs font-semibold text-muted transition hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                title="Log out"
+              >
+                <LogOut aria-hidden="true" className="size-3.5" />
+                <span>Log out</span>
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Mobile menu toggle */}
         <button
           type="button"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -101,14 +172,51 @@ export function SiteHeader() {
               );
             })}
           </nav>
-          <Link
-            href="/register"
-            onClick={() => setMenuOpen(false)}
-            className={buttonClasses({ size: "md", className: "mt-4 w-full" })}
-          >
-            Register as worker
-            <ArrowUpRight aria-hidden="true" className="size-4" />
-          </Link>
+
+          <div className="mt-4 border-t border-ink/10 pt-4">
+            {!isLoggedIn ? (
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className={buttonClasses({ size: "md", className: "w-full" })}
+              >
+                <LogIn aria-hidden="true" className="size-4" />
+                Log in
+              </Link>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-cream/50 p-3">
+                  <div
+                    className={cn(
+                      "grid size-10 place-items-center rounded-full text-sm font-semibold text-cream",
+                      isAdmin ? "bg-forest text-lime" : "bg-forest",
+                    )}
+                  >
+                    {isAdmin ? (
+                      <ShieldCheck aria-hidden="true" className="size-5" />
+                    ) : (
+                      <User aria-hidden="true" className="size-5" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-ink">{displayName}</p>
+                    <p className="text-xs text-muted">
+                      {isAdmin ? "Administrator" : `Gig Worker • ${user?.worker?.platform ?? ""}`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-danger/20 bg-danger/10 py-2.5 text-sm font-medium text-danger transition hover:bg-danger/20"
+                >
+                  <LogOut aria-hidden="true" className="size-4" />
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
     </header>

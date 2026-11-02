@@ -9,6 +9,8 @@ import {
   ArrowUpRight,
   BadgeIndianRupee,
   Clock3,
+  Lock,
+  LogIn,
   MapPin,
   Plus,
   Users,
@@ -23,17 +25,62 @@ import {
 } from "@/components/ui/feedback";
 import { formatExperience, formatINR, initials } from "@/lib/format";
 import { getActiveWorkerId, rememberWorker } from "@/lib/storage";
+import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
 
 export default function DashboardHubPage() {
+  const { user, isLoggedIn, isAdmin, loading: authLoading } = useAuth();
   const { workers, loading, error, reload } = useWorkers();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setActiveId(getActiveWorkerId());
+    // If logged in worker has worker_id, prioritize it
+    if (user?.worker_id) {
+      setActiveId(user.worker_id);
+      rememberWorker(user.worker_id);
+    } else {
+      setActiveId(getActiveWorkerId());
+    }
     setReady(true);
-  }, []);
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="page-container flex min-h-[50vh] items-center justify-center">
+        <LoadingState label="Checking authorization..." />
+      </div>
+    );
+  }
+
+  // Not logged in: Show sign in prompt
+  if (!isLoggedIn) {
+    return (
+      <div className="page-container py-16 sm:py-24">
+        <div className="mx-auto max-w-md rounded-3xl border border-ink/10 bg-paper p-8 text-center shadow-soft">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-forest-light text-forest">
+            <Lock aria-hidden="true" className="size-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
+            Sign in to view your dashboard
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Please log in with your worker account or sign up to view and manage your income protection and weekly claims.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-2.5">
+            <ButtonLink href="/login" size="lg" className="w-full">
+              <LogIn aria-hidden="true" className="size-4" />
+              Log in to account
+            </ButtonLink>
+            <ButtonLink href="/login?tab=signup" variant="secondary" className="w-full">
+              New user? Sign up here
+            </ButtonLink>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const activeWorker = workers.find((worker) => worker.id === activeId) ?? null;
 
@@ -53,10 +100,17 @@ export default function DashboardHubPage() {
             and cover.
           </p>
         </div>
-        <ButtonLink href="/register" variant="secondary" size="md">
-          <Plus aria-hidden="true" className="size-4" />
-          Add worker
-        </ButtonLink>
+        <div className="flex items-center gap-3">
+          {isAdmin ? (
+            <ButtonLink href="/admin" variant="secondary" size="md">
+              Admin console
+            </ButtonLink>
+          ) : null}
+          <ButtonLink href="/login?tab=signup" variant="secondary" size="md">
+            <Plus aria-hidden="true" className="size-4" />
+            Add worker
+          </ButtonLink>
+        </div>
       </div>
 
       {loading || !ready ? (
@@ -74,7 +128,7 @@ export default function DashboardHubPage() {
             title="No worker profiles yet"
             description="Register your first worker profile to unlock the dashboard, premium calculator and weekly cover."
             action={
-              <ButtonLink href="/register" size="md">
+              <ButtonLink href="/login?tab=signup" size="md">
                 Register as a worker
                 <ArrowRight aria-hidden="true" className="size-4" />
               </ButtonLink>
@@ -93,7 +147,7 @@ export default function DashboardHubPage() {
                   </span>
                   <div>
                     <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-lime">
-                      Continue as
+                      Current profile
                     </p>
                     <p className="mt-1 text-xl font-semibold">
                       {activeWorker.full_name}
@@ -120,12 +174,14 @@ export default function DashboardHubPage() {
               {workers.length} registered{" "}
               {workers.length === 1 ? "profile" : "profiles"}
             </h2>
-            <Link
-              href="/admin"
-              className="text-xs font-semibold text-forest hover:underline"
-            >
-              View admin overview
-            </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="text-xs font-semibold text-forest hover:underline"
+              >
+                View admin overview
+              </Link>
+            ) : null}
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,6 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect -- This page hydrates client-only localStorage records after mount. */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Activity,
@@ -11,8 +12,10 @@ import {
   Check,
   CircleAlert,
   FileText,
+  Lock,
   MapPin,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Users,
@@ -43,6 +46,7 @@ import {
   type ClaimStatus,
   type PolicyRecord,
 } from "@/lib/storage";
+import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
 
 type Tab = "workers" | "claims";
@@ -54,6 +58,8 @@ const disruptionTone = {
 };
 
 export default function AdminPage() {
+  const router = useRouter();
+  const { user, isLoggedIn, isAdmin, loading: authLoading, logout } = useAuth();
   const { workers, loading, error, reload } = useWorkers();
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [policies, setPolicies] = useState<PolicyRecord[]>([]);
@@ -75,6 +81,88 @@ export default function AdminPage() {
     seedDemoClaims(workers);
     setClaims(getAllClaims());
     setTab("claims");
+  }
+
+  if (authLoading) {
+    return (
+      <div className="page-container flex min-h-[50vh] items-center justify-center">
+        <LoadingState label="Verifying admin credentials..." />
+      </div>
+    );
+  }
+
+  // Not logged in: Show Admin Authentication Required screen
+  if (!isLoggedIn) {
+    return (
+      <div className="page-container py-16 sm:py-24">
+        <div className="mx-auto max-w-md rounded-3xl border border-ink/10 bg-paper p-8 text-center shadow-soft">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-forest-light text-forest">
+            <Lock aria-hidden="true" className="size-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
+            Admin login required
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            The Admin dashboard is only accessible to administrators. Please log in with the administrator account to continue.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-forest/20 bg-forest-light/60 p-3 text-left">
+            <p className="text-xs font-semibold text-forest">Default Admin Credentials</p>
+            <p className="mt-1 text-xs text-forest/80">
+              Username: <code className="font-semibold text-ink">admin</code> &nbsp;|&nbsp;
+              Password: <code className="font-semibold text-ink">admin123</code>
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2.5">
+            <ButtonLink href="/login?redirect=/admin" size="lg" className="w-full">
+              Log in as Admin
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </ButtonLink>
+            <ButtonLink href="/" variant="secondary" className="w-full">
+              Back to Home
+            </ButtonLink>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in as Worker: Access Denied for Admin portal
+  if (!isAdmin) {
+    return (
+      <div className="page-container py-16 sm:py-24">
+        <div className="mx-auto max-w-md rounded-3xl border border-danger/20 bg-paper p-8 text-center shadow-soft">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-danger/10 text-danger">
+            <ShieldAlert aria-hidden="true" className="size-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
+            Admin Access Only
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            You are logged in as <strong className="text-ink">{user?.full_name || user?.username}</strong> (Worker).
+            The Admin console is restricted to administrators only.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-2.5">
+            <ButtonLink href="/dashboard" size="lg" className="w-full">
+              Go to your worker dashboard
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </ButtonLink>
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                router.push("/login?redirect=/admin");
+              }}
+              className="mt-2 text-xs font-semibold text-muted transition hover:text-danger"
+            >
+              Log out and sign in with admin account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const averageIncome =
@@ -110,7 +198,7 @@ export default function AdminPage() {
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh workers
           </Button>
-          <ButtonLink href="/register" size="md">
+          <ButtonLink href="/login?tab=signup" size="md">
             Add worker
             <ArrowRight aria-hidden="true" className="size-4" />
           </ButtonLink>
@@ -132,7 +220,7 @@ export default function AdminPage() {
             title="No workers registered"
             description="Once a worker registers, their profile will appear here with income, platform and city details."
             action={
-              <ButtonLink href="/register" size="md">
+              <ButtonLink href="/login?tab=signup" size="md">
                 Register the first worker
                 <ArrowRight aria-hidden="true" className="size-4" />
               </ButtonLink>
@@ -151,73 +239,76 @@ export default function AdminPage() {
             <MetricCard
               icon={BadgeIndianRupee}
               label="Average daily income"
-              value={formatINR(averageIncome)}
-              detail="Across all profiles"
+              value={formatINR(Math.round(averageIncome))}
+              detail="Declared daily take-home"
             />
             <MetricCard
               icon={ShieldCheck}
               label="Active policies"
               value={String(policies.length)}
-              detail="Local prototype records"
+              detail="Weekly income cover in place"
             />
             <MetricCard
-              icon={FileText}
-              label="Open claims"
+              icon={CircleAlert}
+              label="Claims to review"
               value={String(openClaims)}
-              detail={`${claims.length} total claims`}
+              detail={`${claims.length} total claims on record`}
               accent={openClaims > 0}
             />
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-            <div
-              role="tablist"
-              aria-label="Admin sections"
-              className="inline-flex rounded-full border border-ink/10 bg-paper p-1"
-            >
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 pb-4">
+            <div className="flex gap-2">
               <button
                 type="button"
-                role="tab"
-                aria-selected={tab === "workers"}
                 onClick={() => setTab("workers")}
                 className={cn(
                   "rounded-full px-4 py-2 text-xs font-semibold transition",
                   tab === "workers"
-                    ? "bg-forest text-cream"
-                    : "text-muted hover:text-ink",
+                    ? "bg-ink text-cream"
+                    : "bg-paper text-muted hover:text-ink",
                 )}
               >
-                Workers · {workers.length}
+                Workers ({workers.length})
               </button>
               <button
                 type="button"
-                role="tab"
-                aria-selected={tab === "claims"}
                 onClick={() => setTab("claims")}
                 className={cn(
                   "rounded-full px-4 py-2 text-xs font-semibold transition",
                   tab === "claims"
-                    ? "bg-forest text-cream"
-                    : "text-muted hover:text-ink",
+                    ? "bg-ink text-cream"
+                    : "bg-paper text-muted hover:text-ink",
                 )}
               >
-                Claims · {claims.length}
+                Claims ({claims.length})
+                {openClaims > 0 ? (
+                  <span className="ml-1.5 inline-grid size-4 place-items-center rounded-full bg-heat text-[9px] text-cream">
+                    {openClaims}
+                  </span>
+                ) : null}
               </button>
             </div>
 
-            {tab === "claims" && claims.length > 0 ? (
-              <p className="text-xs text-muted">
-                {openClaims} awaiting review · stored in this browser
-              </p>
-            ) : null}
+            {claims.length === 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={loadDemoClaims}
+                disabled={workers.length === 0}
+              >
+                <Sparkles aria-hidden="true" className="size-3.5" />
+                Seed demo claims
+              </Button>
+            )}
           </div>
 
           {tab === "workers" ? (
-            <section className="mt-4 card-surface overflow-hidden">
+            <div className="mt-6 overflow-hidden rounded-3xl border border-ink/10 bg-paper shadow-card">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[54rem] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-ink/10 bg-cream/50 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="border-b border-ink/10 bg-cream/40 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted">
+                    <tr>
                       <th scope="col" className="px-5 py-3.5">
                         Worker
                       </th>
@@ -227,207 +318,182 @@ export default function AdminPage() {
                       <th scope="col" className="px-5 py-3.5">
                         City
                       </th>
-                      <th scope="col" className="px-5 py-3.5">
+                      <th scope="col" className="px-5 py-3.5 text-right">
                         Daily income
                       </th>
-                      <th scope="col" className="px-5 py-3.5">
+                      <th scope="col" className="px-5 py-3.5 text-right">
                         Experience
                       </th>
                       <th scope="col" className="px-5 py-3.5">
-                        Joined
+                        Policy status
                       </th>
                       <th scope="col" className="px-5 py-3.5 text-right">
-                        Action
+                        <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink/10">
-                    {workers.map((worker) => (
-                      <tr
-                        key={worker.id}
-                        className="transition hover:bg-cream/40"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <span className="grid size-9 place-items-center rounded-xl bg-forest-light text-xs font-semibold text-forest">
-                              {initials(worker.full_name)}
-                            </span>
-                            <div>
-                              <p className="font-semibold text-ink">
-                                {worker.full_name}
-                              </p>
-                              <p className="mt-0.5 font-mono text-[0.62rem] text-muted">
-                                {worker.id.slice(0, 8)}…
-                              </p>
+                    {workers.map((worker) => {
+                      const policy = policies.find(
+                        (item) => item.workerId === worker.id,
+                      );
+
+                      return (
+                        <tr
+                          key={worker.id}
+                          className="transition hover:bg-cream/40"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <span
+                                aria-hidden="true"
+                                className="grid size-9 shrink-0 place-items-center rounded-xl bg-forest-light text-xs font-semibold text-forest"
+                              >
+                                {initials(worker.full_name)}
+                              </span>
+                              <div>
+                                <p className="font-semibold">{worker.full_name}</p>
+                                <p className="font-mono text-[0.68rem] text-muted">
+                                  {worker.id.slice(0, 8)}…
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <PlatformBadge platform={worker.platform} />
-                        </td>
-                        <td className="px-5 py-4 text-muted">
-                          <span className="inline-flex items-center gap-1.5">
-                            <MapPin aria-hidden="true" className="size-3.5" />
-                            {worker.city}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 font-semibold">
-                          {formatINR(worker.average_daily_income)}
-                        </td>
-                        <td className="px-5 py-4 text-muted">
-                          {formatExperience(worker.experience_days)}
-                        </td>
-                        <td className="px-5 py-4 text-muted">
-                          {formatDate(worker.created_at)}
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <Link
-                            href={`/dashboard/${worker.id}`}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-forest hover:underline"
-                          >
-                            Open
-                            <ArrowRight
-                              aria-hidden="true"
-                              className="size-3.5"
-                            />
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-5 py-4">
+                            <PlatformBadge platform={worker.platform} />
+                          </td>
+                          <td className="px-5 py-4 text-muted">
+                            <span className="inline-flex items-center gap-1.5">
+                              <MapPin
+                                aria-hidden="true"
+                                className="size-3.5 text-muted"
+                              />
+                              {worker.city}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-right font-medium">
+                            {formatINR(worker.average_daily_income)}
+                          </td>
+                          <td className="px-5 py-4 text-right text-muted">
+                            {formatExperience(worker.experience_days)}
+                          </td>
+                          <td className="px-5 py-4">
+                            {policy ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-forest/20 bg-forest-light px-2.5 py-1 text-xs font-medium text-forest">
+                                <span className="status-dot" />
+                                Active (₹{policy.premium}/wk)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-cream/40 px-2.5 py-1 text-xs text-muted">
+                                Not insured
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <Link
+                              href={`/dashboard/${worker.id}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-forest hover:bg-forest-light hover:text-forest"
+                            >
+                              Open
+                              <ArrowRight
+                                aria-hidden="true"
+                                className="size-3"
+                              />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            </section>
+            </div>
           ) : (
-            <section className="mt-4">
+            <div className="mt-6 space-y-3">
               {claims.length === 0 ? (
                 <EmptyState
                   icon={FileText}
-                  title="No claims in the queue"
-                  description="File a claim from the policy page, or load sample claims to preview the admin review flow."
+                  title="No claims filed yet"
+                  description="When weather disruptions strike, delivery partners file claims here. You can also load demo data to try the review workflow."
                   action={
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="md"
                       onClick={loadDemoClaims}
+                      disabled={workers.length === 0}
                     >
                       <Sparkles aria-hidden="true" className="size-4" />
-                      Load sample claims
+                      Seed demo claims
                     </Button>
                   }
                 />
               ) : (
-                <div className="space-y-3">
-                  {claims.map((claim) => (
-                    <article
-                      key={claim.id}
-                      className="card-surface p-5"
-                    >
-                      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-                        <div className="flex items-start gap-3">
-                          <span
-                            className={cn(
-                              "grid size-10 shrink-0 place-items-center rounded-xl text-xs font-semibold",
-                              disruptionTone[claim.disruption],
-                            )}
-                          >
-                            {initials(claim.workerName)}
-                          </span>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold">
-                                {claim.workerName}
-                              </p>
-                              <PlatformBadge platform={claim.platform} />
-                              <ClaimStatusBadge status={claim.status} />
-                            </div>
-                            <p className="mt-1 text-xs text-muted">
-                              {claim.disruption} ·{" "}
-                              {formatDate(claim.incidentDate)} ·{" "}
-                              {claim.hoursLost} hours lost · {claim.city}
-                            </p>
-                            {claim.description ? (
-                              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-muted">
-                                {claim.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 lg:justify-end">
-                          <div className="text-right">
-                            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted">
-                              Indicative payout
-                            </p>
-                            <p className="mt-1 text-lg font-semibold">
-                              {formatINR(claim.payout, { decimals: 2 })}
-                            </p>
-                          </div>
-                          {claim.status === "Under review" ? (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleStatus(claim.id, "Approved")
-                                }
-                              >
-                                <Check
-                                  aria-hidden="true"
-                                  className="size-3.5"
-                                />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() =>
-                                  handleStatus(claim.id, "Rejected")
-                                }
-                              >
-                                <X aria-hidden="true" className="size-3.5" />
-                                Reject
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted">
-                              Reviewed
-                            </span>
+                claims.map((claim) => (
+                  <div
+                    key={claim.id}
+                    className="flex flex-col gap-4 rounded-3xl border border-ink/10 bg-paper p-5 shadow-card sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ClaimStatusBadge status={claim.status} />
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            disruptionTone[claim.disruption],
                           )}
-                        </div>
+                        >
+                          {claim.disruption}
+                        </span>
+                        <PlatformBadge platform={claim.platform} />
+                        <span className="text-xs text-muted">
+                          Incident date: {formatDate(claim.incidentDate)}
+                        </span>
                       </div>
-                    </article>
-                  ))}
+                      <p className="text-sm font-semibold sm:text-base">
+                        {claim.workerName}{" "}
+                        <span className="font-normal text-muted">
+                          in {claim.city} • {claim.hoursLost} hours lost
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted">{claim.description}</p>
+                    </div>
 
-                  <div className="flex items-start gap-2 rounded-2xl border border-heat/20 bg-heat/5 p-4 text-xs leading-relaxed text-muted">
-                    <CircleAlert
-                      aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-heat"
-                    />
-                    <p>
-                      This queue is a frontend prototype. Approving or rejecting
-                      a claim updates local browser storage only; no payout is
-                      triggered and no backend record is changed.
-                    </p>
+                    <div className="flex shrink-0 items-center justify-between gap-4 border-t border-ink/10 pt-3 sm:border-0 sm:pt-0">
+                      <div className="text-right sm:pr-2">
+                        <p className="text-[0.65rem] uppercase tracking-wider text-muted">
+                          Estimated payout
+                        </p>
+                        <p className="text-lg font-semibold text-forest">
+                          {formatINR(claim.payout)}
+                        </p>
+                      </div>
+
+                      {claim.status === "Under review" ? (
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleStatus(claim.id, "Approved")}
+                            className="inline-flex items-center gap-1 rounded-full border border-forest/30 bg-forest-light px-3 py-1.5 text-xs font-semibold text-forest transition hover:bg-forest hover:text-cream"
+                          >
+                            <Check aria-hidden="true" className="size-3" />
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStatus(claim.id, "Rejected")}
+                            className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger hover:text-white"
+                          >
+                            <X aria-hidden="true" className="size-3" />
+                            Reject
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ))
               )}
-            </section>
+            </div>
           )}
-
-          <div className="mt-5 flex flex-col justify-between gap-3 rounded-2xl border border-ink/10 bg-paper/60 px-4 py-3 text-xs text-muted sm:flex-row sm:items-center">
-            <p>
-              Workers: <span className="font-semibold text-ink">GET /workers</span>{" "}
-              · Policies and claims:{" "}
-              <span className="font-semibold text-ink">local browser storage</span>
-            </p>
-            {ready ? (
-              <p>
-                {claims.length} claim{claims.length === 1 ? "" : "s"} ·{" "}
-                {policies.length} polic{policies.length === 1 ? "y" : "ies"} on
-                this device
-              </p>
-            ) : null}
-          </div>
         </>
       )}
     </div>

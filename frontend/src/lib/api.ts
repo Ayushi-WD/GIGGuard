@@ -1,6 +1,9 @@
 import type {
+  AuthResponse,
+  LoginCredentials,
   PricingEstimate,
   PricingRequest,
+  SignUpPayload,
   Worker,
   WorkerCreate,
 } from "@/lib/types";
@@ -117,6 +120,20 @@ export function registerWorker(payload: WorkerCreate) {
 
 export function estimatePremium(payload: PricingRequest) {
   return request<PricingEstimate>("/pricing/estimate", {
+    method: "POST",
+    json: payload,
+  });
+}
+
+export function loginUser(payload: LoginCredentials) {
+  return request<AuthResponse>("/auth/login", {
+    method: "POST",
+    json: payload,
+  });
+}
+
+export function signupUser(payload: SignUpPayload) {
+  return request<AuthResponse>("/auth/signup", {
     method: "POST",
     json: payload,
   });

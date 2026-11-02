@@ -4,6 +4,45 @@ export type Platform = (typeof PLATFORMS)[number];
 export const LOCATION_RISKS = ["low", "medium", "high"] as const;
 export type LocationRisk = (typeof LOCATION_RISKS)[number];
 
+export type UserRole = "admin" | "worker";
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  worker_id?: string | null;
+  full_name?: string;
+  worker?: Worker | null;
+  token?: string;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface SignUpPayload {
+  username: string;
+  password: string;
+  full_name: string;
+  city: string;
+  platform: Platform;
+  average_daily_income: number;
+  experience_days: number;
+}
+
+export interface AuthResponse {
+  user: {
+    id: string;
+    username: string;
+    role: UserRole;
+    worker_id: string | null;
+    created_at: string;
+  };
+  worker: Worker | null;
+  token: string;
+}
+
 export interface Worker {
   id: string;
   full_name: string;

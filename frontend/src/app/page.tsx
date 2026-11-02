@@ -121,7 +121,7 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/register" size="lg">
+              <ButtonLink href="/login?tab=signup" size="lg">
                 Register as a worker
                 <ArrowRight aria-hidden="true" className="size-4" />
               </ButtonLink>
@@ -319,7 +319,7 @@ export default function LandingPage() {
                 ₹49 and ₹99 per week.
               </p>
               <ButtonLink
-                href="/register"
+                href="/login?tab=signup"
                 variant="lime"
                 size="md"
                 className="mt-7"
@@ -408,7 +408,7 @@ export default function LandingPage() {
               what your cover looks like.
             </p>
             <ButtonLink
-              href="/register"
+              href="/login?tab=signup"
               size="lg"
               className="mt-7 bg-forest-dark text-cream hover:bg-ink"
             >
