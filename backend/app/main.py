@@ -11,6 +11,7 @@ from app.database import Base, make_engine, make_session_factory
 from app.models import User, UserRole
 from app.routers.auth import router as auth_router
 from app.routers.pricing import router as pricing_router
+from app.routers.risk import router as risk_router
 from app.routers.workers import router as workers_router
 
 
@@ -56,6 +57,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(workers_router)
 app.include_router(pricing_router)
+app.include_router(risk_router)
 
 
 @app.get("/")

@@ -30,12 +30,13 @@ def load_model(model_path=DEFAULT_MODEL):
     return artifact
 
 
-def predict_risk(worker_features, model_path=DEFAULT_MODEL):
+def predict_risk(worker_features, model_path=DEFAULT_MODEL, *, pipeline=None):
     row = validate_features(worker_features)
-    pipeline = load_model(model_path)["pipeline"]
+    if pipeline is None:
+        pipeline = load_model(model_path)["pipeline"]
     prediction = float(pipeline.predict(pd.DataFrame([row], columns=FEATURES))[0])
-    if not math.isfinite(prediction):
-        raise ValueError("Model produced a non-finite score")
+    if not math.isfinite(prediction) or not 0 <= prediction <= 100:
+        raise ValueError("Model produced a score outside the finite 0-100 range")
     return min(100.0, max(0.0, prediction))
 
 
