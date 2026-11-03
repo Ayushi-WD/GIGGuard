@@ -9,13 +9,14 @@ import {
   ArrowUpRight,
   BadgeIndianRupee,
   Clock3,
-  Lock,
   LogIn,
   MapPin,
   Plus,
   Users,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/page-header";
+import { SignInPrompt } from "@/components/sign-in-prompt";
 import { ButtonLink } from "@/components/ui/button";
 import {
   EmptyState,
@@ -56,29 +57,23 @@ export default function DashboardHubPage() {
   // Not logged in: Show sign in prompt
   if (!isLoggedIn) {
     return (
-      <div className="page-container py-16 sm:py-24">
-        <div className="mx-auto max-w-md rounded-3xl border border-ink/10 bg-paper p-8 text-center shadow-soft">
-          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-forest-light text-forest">
-            <Lock aria-hidden="true" className="size-6" />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
-            Sign in to view your dashboard
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Please log in with your worker account or sign up to view and manage your income protection and weekly claims.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2.5">
-            <ButtonLink href="/login" size="lg" className="w-full">
-              <LogIn aria-hidden="true" className="size-4" />
-              Log in to account
-            </ButtonLink>
-            <ButtonLink href="/login?tab=signup" variant="secondary" className="w-full">
-              New user? Sign up here
-            </ButtonLink>
-          </div>
-        </div>
-      </div>
+      <SignInPrompt
+        icon={LogIn}
+        title="Sign in to view your dashboard"
+        description="Please log in with your worker account or sign up to view and manage your income protection and weekly claims."
+      >
+        <ButtonLink href="/login" size="lg" className="w-full">
+          <LogIn aria-hidden="true" className="size-4" />
+          Log in to account
+        </ButtonLink>
+        <ButtonLink
+          href="/login?tab=signup"
+          variant="secondary"
+          className="w-full"
+        >
+          New user? Sign up here
+        </ButtonLink>
+      </SignInPrompt>
     );
   }
 
@@ -86,32 +81,25 @@ export default function DashboardHubPage() {
 
   return (
     <div className="page-container py-10 sm:py-16">
-      <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow">
-            <Users aria-hidden="true" className="size-3.5" />
-            Worker dashboard
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Pick up where you left off.
-          </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-            Open your saved worker profile to see your details, weekly premium
-            and cover.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {isAdmin ? (
-            <ButtonLink href="/admin" variant="secondary" size="md">
-              Admin console
+      <PageHeader
+        icon={Users}
+        eyebrow="Worker dashboard"
+        title="Pick up where you left off."
+        description="Open your saved worker profile to see your details, weekly premium and cover."
+        actions={
+          <>
+            {isAdmin ? (
+              <ButtonLink href="/admin" variant="secondary" size="md">
+                Admin console
+              </ButtonLink>
+            ) : null}
+            <ButtonLink href="/login?tab=signup" variant="secondary" size="md">
+              <Plus aria-hidden="true" className="size-4" />
+              Add worker
             </ButtonLink>
-          ) : null}
-          <ButtonLink href="/login?tab=signup" variant="secondary" size="md">
-            <Plus aria-hidden="true" className="size-4" />
-            Add worker
-          </ButtonLink>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {loading || !ready ? (
         <div className="mt-10">

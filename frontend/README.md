@@ -21,7 +21,7 @@ copy `.env.example` to `.env.local` and set `BACKEND_URL`.
 - `/register` — worker registration (`POST /workers`)
 - `/dashboard` — saved worker profiles (`GET /workers`)
 - `/dashboard/[workerId]` — worker dashboard (`GET /workers/{worker_id}`)
-- `/dashboard/[workerId]/premium` — premium calculator (`POST /pricing/estimate`)
+- `/dashboard/[workerId]/premium` — premium calculator (`POST /pricing/estimate`); the risk score is derived from the chosen zone
 - `/policy` — prototype weekly policy and claims
 - `/admin` — worker portfolio and local claim review queue
 

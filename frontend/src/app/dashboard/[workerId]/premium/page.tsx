@@ -11,20 +11,16 @@ import {
   BadgeIndianRupee,
   CalendarDays,
   Check,
-  CircleCheck,
   Info,
   LoaderCircle,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/page-header";
+import { EstimatePanel } from "@/components/premium/estimate-panel";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/feedback";
-import {
-  formatINR,
-  formatSignedINR,
-  firstName,
-} from "@/lib/format";
+import { formatINR, firstName } from "@/lib/format";
 import {
   activatePolicy,
   getPolicy,
@@ -35,13 +31,13 @@ import {
 import {
   LOCATION_RISKS,
   LOCATION_RISK_COPY,
+  LOCATION_RISK_SCORE,
   type LocationRisk,
   type PricingEstimate,
 } from "@/lib/types";
 import { ApiError, estimatePremium } from "@/lib/api";
 import { useWorker } from "@/lib/use-worker";
 
-const riskPresets = [20, 50, 80];
 const dayOptions = [1, 2, 3, 4, 5, 6, 7];
 
 export default function PremiumCalculatorPage() {
@@ -51,18 +47,17 @@ export default function PremiumCalculatorPage() {
   const { worker, loading, error, reload } = useWorker(workerId);
 
   const [locationRisk, setLocationRisk] = useState<LocationRisk>("medium");
-  const [riskScore, setRiskScore] = useState(55);
   const [workDays, setWorkDays] = useState(6);
   const [result, setResult] = useState<PricingEstimate | null>(null);
-  const [submittedKey, setSubmittedKey] = useState<string | null>(null);
-  const [submittedMeta, setSubmittedMeta] = useState<{
-    locationRisk: LocationRisk;
-    riskScore: number;
-    workDaysPerWeek: number;
-  } | null>(null);
+  const [resultKey, setResultKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [policy, setPolicy] = useState<PolicyRecord | null>(null);
+
+  // Workers only choose their zone; the score is derived for the pricing API.
+  const riskScore = LOCATION_RISK_SCORE[locationRisk];
+  const currentKey = `${locationRisk}|${riskScore}|${workDays}`;
+  const isStale = Boolean(result) && resultKey !== currentKey;
 
   useEffect(() => {
     if (!worker) {
@@ -74,22 +69,13 @@ export default function PremiumCalculatorPage() {
     const saved = getSavedEstimate(worker.id);
     if (saved) {
       setLocationRisk(saved.locationRisk);
-      setRiskScore(saved.riskScore);
       setWorkDays(saved.workDaysPerWeek);
       setResult(saved.estimate);
-      setSubmittedKey(
+      setResultKey(
         `${saved.locationRisk}|${saved.riskScore}|${saved.workDaysPerWeek}`,
       );
-      setSubmittedMeta({
-        locationRisk: saved.locationRisk,
-        riskScore: saved.riskScore,
-        workDaysPerWeek: saved.workDaysPerWeek,
-      });
     }
   }, [worker]);
-
-  const currentKey = `${locationRisk}|${riskScore}|${workDays}`;
-  const isStale = Boolean(result) && submittedKey !== currentKey;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,32 +85,22 @@ export default function PremiumCalculatorPage() {
       return;
     }
 
-    if (!Number.isFinite(riskScore) || riskScore < 0 || riskScore > 100) {
-      setFormError("Risk score must be between 0 and 100.");
-      return;
-    }
-
-    const payload = {
-      worker_id: worker.id,
-      risk_score: riskScore,
-      location_risk: locationRisk,
-      work_days_per_week: workDays,
-    };
-    const signature = `${locationRisk}|${riskScore}|${workDays}`;
-    const meta = {
-      locationRisk,
-      riskScore,
-      workDaysPerWeek: workDays,
-    };
-
     setSubmitting(true);
 
     try {
-      const estimate = await estimatePremium(payload);
+      const estimate = await estimatePremium({
+        worker_id: worker.id,
+        risk_score: riskScore,
+        location_risk: locationRisk,
+        work_days_per_week: workDays,
+      });
       setResult(estimate);
-      setSubmittedKey(signature);
-      setSubmittedMeta(meta);
-      saveEstimate(worker.id, estimate, meta);
+      setResultKey(currentKey);
+      saveEstimate(worker.id, estimate, {
+        locationRisk,
+        riskScore,
+        workDaysPerWeek: workDays,
+      });
       setPolicy(getPolicy(worker.id));
     } catch (caught) {
       setFormError(
@@ -142,15 +118,11 @@ export default function PremiumCalculatorPage() {
       return;
     }
 
-    const meta = submittedMeta ?? {
+    const activated = activatePolicy(worker, {
+      estimate: result,
       locationRisk,
       riskScore,
       workDaysPerWeek: workDays,
-    };
-
-    const activated = activatePolicy(worker, {
-      estimate: result,
-      ...meta,
       savedAt: new Date().toISOString(),
     });
     setPolicy(activated);
@@ -197,25 +169,22 @@ export default function PremiumCalculatorPage() {
         Back to dashboard
       </Link>
 
-      <div className="mt-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow">
-            <Sparkles aria-hidden="true" className="size-3.5" />
-            Premium calculator
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Build your weekly cover.
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-            {firstName(worker.full_name)}, choose your location risk, set a
-            simulated risk score and tell us how many days you work.
-          </p>
-        </div>
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-ink/10 bg-paper px-4 py-2 text-xs text-muted">
-          <BadgeIndianRupee aria-hidden="true" className="size-3.5 text-forest" />
-          Daily income {formatINR(worker.average_daily_income)}
-        </div>
-      </div>
+      <PageHeader
+        className="mt-6"
+        icon={Sparkles}
+        eyebrow="Premium calculator"
+        title="Build your weekly cover."
+        description={`${firstName(worker.full_name)}, choose your risk zone and tell us how many days you work. We estimate the risk score for you.`}
+        actions={
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-ink/10 bg-paper px-4 py-2 text-xs text-muted">
+            <BadgeIndianRupee
+              aria-hidden="true"
+              className="size-3.5 text-forest"
+            />
+            Daily income {formatINR(worker.average_daily_income)}
+          </div>
+        }
+      />
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
         <section className="card-surface p-6 sm:p-7">
@@ -228,9 +197,9 @@ export default function PremiumCalculatorPage() {
             </span>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-7">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-6">
             <fieldset>
-              <legend className="field-label">Location risk</legend>
+              <legend className="field-label">Your risk zone</legend>
               <div className="grid gap-2.5 sm:grid-cols-3">
                 {LOCATION_RISKS.map((risk) => {
                   const active = locationRisk === risk;
@@ -272,74 +241,23 @@ export default function PremiumCalculatorPage() {
               </div>
             </fieldset>
 
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <label htmlFor="risk-score" className="field-label !mb-0">
-                  Simulated risk score
-                </label>
-                <span className="rounded-full bg-forest-light px-3 py-1 text-xs font-semibold text-forest">
-                  {riskScore} / 100
-                </span>
-              </div>
-              <p className="field-hint">
-                A higher score means more expected disruption in your zone.
-              </p>
-
-              <input
-                id="risk-score"
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={riskScore}
-                onChange={(event) => setRiskScore(Number(event.target.value))}
-                className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-forest-light accent-forest"
-              />
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex gap-1.5">
-                  {riskPresets.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setRiskScore(preset)}
-                      className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
-                        riskScore === preset
-                          ? "bg-forest text-cream"
-                          : "bg-cream text-muted hover:text-ink"
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="risk-score-number"
-                    className="text-xs text-muted"
-                  >
-                    Enter score
-                  </label>
-                  <input
-                    id="risk-score-number"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={riskScore}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      setRiskScore(
-                        Number.isFinite(next)
-                          ? Math.min(100, Math.max(0, next))
-                          : 0,
-                      );
-                    }}
-                    className="w-20 rounded-xl border border-ink/15 bg-paper px-3 py-2 text-center text-sm font-semibold text-ink outline-none focus:border-forest focus:ring-4 focus:ring-forest/10"
-                  />
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-forest/15 bg-forest-light/40 px-4 py-3.5">
+              <div className="flex items-start gap-2.5">
+                <Sparkles
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-forest"
+                />
+                <div>
+                  <p className="text-xs font-semibold">Estimated risk score</p>
+                  <p className="mt-0.5 text-[0.7rem] leading-relaxed text-muted">
+                    Set automatically from your zone. You do not need to enter
+                    it.
+                  </p>
                 </div>
               </div>
+              <span className="rounded-full bg-forest px-3 py-1 text-sm font-semibold text-cream">
+                {riskScore} / 100
+              </span>
             </div>
 
             <fieldset>
@@ -414,192 +332,21 @@ export default function PremiumCalculatorPage() {
                 aria-hidden="true"
                 className="mt-0.5 size-3.5 shrink-0 text-forest"
               />
-              This prototype uses a manually entered simulated risk score. It
-              does not read live weather or AQI data.
+              The risk score is estimated from your zone. This prototype does
+              not read live weather or AQI data.
             </p>
           </form>
         </section>
 
         <aside className="lg:sticky lg:top-24">
-          {result ? (
-            <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-cream shadow-soft sm:p-7">
-              <div className="bg-grid-lines pointer-events-none absolute inset-0 opacity-50" />
-              <div className="relative">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-lime">
-                    Your weekly estimate
-                  </p>
-                  {policy ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/15 px-2.5 py-1 text-[0.65rem] font-semibold text-lime">
-                      <span className="status-dot" />
-                      Policy active
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-cream/10 px-2.5 py-1 text-[0.65rem] font-semibold text-cream/65">
-                      Estimate
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-6 flex items-end gap-2">
-                  <span className="text-6xl font-semibold tracking-[-0.055em]">
-                    {formatINR(result.final_weekly_premium, { decimals: 2 })}
-                  </span>
-                  <span className="pb-2 text-sm text-cream/50">/ week</span>
-                </div>
-                <p className="mt-1 text-sm text-cream/55">
-                  Protecting {formatINR(result.weekly_income)} of weekly income
-                </p>
-
-                <div className="mt-6">
-                  <div className="flex items-center justify-between text-[0.65rem] text-cream/45">
-                    <span>₹49</span>
-                    <span>₹99</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-cream/10">
-                    <div
-                      className="h-full rounded-full bg-lime transition-all duration-500"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(
-                            4,
-                            ((Number(result.final_weekly_premium) - 49) / 50) *
-                              100,
-                          ),
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-2 text-[0.68rem] text-cream/45">
-                    Final premium is clamped to the ₹49–₹99 weekly range.
-                  </p>
-                </div>
-
-                {isStale ? (
-                  <div className="mt-5 rounded-xl border border-heat/25 bg-heat/10 px-3.5 py-2.5 text-[0.7rem] text-cream/75">
-                    Inputs changed. Recalculate to refresh this estimate.
-                  </div>
-                ) : null}
-
-                <dl className="mt-6 divide-y divide-cream/10 border-t border-cream/10 text-sm">
-                  <BreakdownRow
-                    label="Weekly income"
-                    value={formatINR(result.weekly_income, { decimals: 2 })}
-                  />
-                  <BreakdownRow
-                    label="Base premium (2%)"
-                    value={formatINR(result.base_premium, { decimals: 2 })}
-                  />
-                  <BreakdownRow
-                    label="Risk loading"
-                    value={formatSignedINR(result.risk_loading)}
-                  />
-                  <BreakdownRow
-                    label="Subtotal"
-                    value={formatINR(result.subtotal, { decimals: 2 })}
-                  />
-                  <BreakdownRow
-                    label="Location adjustment"
-                    value={formatSignedINR(result.location_adjustment)}
-                  />
-                  <BreakdownRow
-                    label="Experience adjustment"
-                    value={formatSignedINR(result.experience_adjustment)}
-                  />
-                  <BreakdownRow
-                    label="Raw premium"
-                    value={formatINR(result.raw_premium, { decimals: 2 })}
-                  />
-                  <div className="flex items-center justify-between gap-3 py-3.5">
-                    <dt className="font-semibold text-cream">
-                      Final weekly premium
-                    </dt>
-                    <dd className="text-lg font-semibold text-lime">
-                      {formatINR(result.final_weekly_premium, {
-                        decimals: 2,
-                      })}
-                    </dd>
-                  </div>
-                </dl>
-
-                {policy ? (
-                  <ButtonLink
-                    href="/policy"
-                    variant="lime"
-                    size="lg"
-                    className="mt-5 w-full"
-                  >
-                    View my policy
-                    <ArrowRight aria-hidden="true" className="size-4" />
-                  </ButtonLink>
-                ) : (
-                  <Button
-                    variant="lime"
-                    size="lg"
-                    onClick={handleActivate}
-                    disabled={isStale}
-                    className="mt-5 w-full"
-                  >
-                    <ShieldCheck aria-hidden="true" className="size-4" />
-                    {isStale ? "Recalculate to activate" : "Activate this cover"}
-                  </Button>
-                )}
-
-                <p className="mt-4 flex items-start gap-2 text-[0.68rem] leading-relaxed text-cream/45">
-                  <CircleCheck
-                    aria-hidden="true"
-                    className="mt-0.5 size-3.5 shrink-0 text-lime/70"
-                  />
-                  Estimate saved in this browser. Activating creates a
-                  prototype policy for this worker.
-                </p>
-              </div>
-            </section>
-          ) : (
-            <section className="relative overflow-hidden rounded-3xl border border-dashed border-forest/25 bg-forest-light/40 p-6 sm:p-7">
-              <p className="eyebrow">Your estimate</p>
-              <p className="mt-5 text-4xl font-semibold tracking-[-0.04em]">
-                ₹49–₹99
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                Fill in your week and calculate to see the full premium
-                breakdown, including risk, location and experience adjustments.
-              </p>
-
-              <ul className="mt-6 space-y-3 text-sm text-muted">
-                {[
-                  "Base premium from weekly income",
-                  "Risk loading from your score",
-                  "Location and experience adjustments",
-                  "Final premium clamped to ₹49–₹99",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-forest text-cream">
-                      <Check aria-hidden="true" className="size-2.5" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-7 rounded-2xl border border-forest/15 bg-paper/70 p-4 text-xs leading-relaxed text-muted">
-                Your last saved estimate for this worker will appear here when
-                you return.
-              </div>
-            </section>
-          )}
+          <EstimatePanel
+            result={result}
+            policy={policy}
+            isStale={isStale}
+            onActivate={handleActivate}
+          />
         </aside>
       </div>
-    </div>
-  );
-}
-
-function BreakdownRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-3">
-      <dt className="text-cream/55">{label}</dt>
-      <dd className="font-medium text-cream/90">{value}</dd>
     </div>
   );
 }

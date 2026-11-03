@@ -4,6 +4,16 @@ export type Platform = (typeof PLATFORMS)[number];
 export const LOCATION_RISKS = ["low", "medium", "high"] as const;
 export type LocationRisk = (typeof LOCATION_RISKS)[number];
 
+/**
+ * Risk score the app sends to the pricing API for each zone.
+ * Workers only pick their zone; the score is derived for them.
+ */
+export const LOCATION_RISK_SCORE: Record<LocationRisk, number> = {
+  low: 30,
+  medium: 55,
+  high: 80,
+};
+
 export type UserRole = "admin" | "worker";
 
 export interface AuthUser {

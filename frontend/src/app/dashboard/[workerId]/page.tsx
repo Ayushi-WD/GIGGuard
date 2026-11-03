@@ -12,15 +12,14 @@ import {
   CalendarDays,
   Check,
   Clock3,
-  CloudRain,
   FileText,
-  Flame,
   MapPin,
   ShieldCheck,
   Sparkles,
-  Wind,
 } from "lucide-react";
 
+import { CoverageGrid } from "@/components/coverage-grid";
+import { PageHeader } from "@/components/page-header";
 import { Button, ButtonLink } from "@/components/ui/button";
 import {
   ErrorState,
@@ -44,27 +43,6 @@ import {
 } from "@/lib/storage";
 import { LOCATION_RISK_COPY } from "@/lib/types";
 import { useWorker } from "@/lib/use-worker";
-
-const coverage = [
-  {
-    icon: CloudRain,
-    title: "Heavy rain",
-    description: "Lost delivery hours due to waterlogging",
-    tone: "bg-rain/10 text-rain",
-  },
-  {
-    icon: Flame,
-    title: "Extreme heat",
-    description: "Safety pauses during heat advisories",
-    tone: "bg-heat/10 text-heat",
-  },
-  {
-    icon: Wind,
-    title: "Severe pollution",
-    description: "Unsafe AQI levels that stop outdoor work",
-    tone: "bg-smog/10 text-smog",
-  },
-];
 
 export default function WorkerDashboardPage() {
   const params = useParams<{ workerId: string }>();
@@ -139,33 +117,25 @@ export default function WorkerDashboardPage() {
         All worker profiles
       </Link>
 
-      <div className="mt-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow">
-            <ShieldCheck aria-hidden="true" className="size-3.5" />
-            Worker dashboard
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Namaste, {firstName(worker.full_name)}.
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Here is your profile and weekly cover snapshot.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ButtonLink
-            href={`/dashboard/${worker.id}/premium`}
-            size="md"
-          >
-            <Sparkles aria-hidden="true" className="size-4" />
-            {savedEstimate ? "Recalculate premium" : "Calculate premium"}
-          </ButtonLink>
-          <ButtonLink href="/policy" variant="secondary" size="md">
-            <FileText aria-hidden="true" className="size-4" />
-            Policy & claims
-          </ButtonLink>
-        </div>
-      </div>
+      <PageHeader
+        className="mt-6"
+        icon={ShieldCheck}
+        eyebrow="Worker dashboard"
+        title={`Namaste, ${firstName(worker.full_name)}.`}
+        description="Here is your profile and weekly cover snapshot."
+        actions={
+          <>
+            <ButtonLink href={`/dashboard/${worker.id}/premium`} size="md">
+              <Sparkles aria-hidden="true" className="size-4" />
+              {savedEstimate ? "Recalculate premium" : "Calculate premium"}
+            </ButtonLink>
+            <ButtonLink href="/policy" variant="secondary" size="md">
+              <FileText aria-hidden="true" className="size-4" />
+              Policy &amp; claims
+            </ButtonLink>
+          </>
+        }
+      />
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.18fr_0.82fr]">
         <section className="card-surface p-6 sm:p-7">
@@ -272,13 +242,13 @@ export default function WorkerDashboardPage() {
 
                 <dl className="mt-6 space-y-2.5 border-t border-cream/10 pt-5 text-sm">
                   <div className="flex items-center justify-between">
-                    <dt className="text-cream/55">Location risk</dt>
+                    <dt className="text-cream/55">Risk zone</dt>
                     <dd className="font-medium">
                       {LOCATION_RISK_COPY[savedEstimate.locationRisk].label}
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="text-cream/55">Simulated risk score</dt>
+                    <dt className="text-cream/55">Estimated risk score</dt>
                     <dd className="font-medium">
                       {savedEstimate.riskScore.toFixed(0)} / 100
                     </dd>
@@ -327,8 +297,8 @@ export default function WorkerDashboardPage() {
                   ₹49–₹99
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-muted">
-                  Your exact premium depends on location risk, simulated risk
-                  score and the number of days you work.
+                  Your exact premium depends on your risk zone and the number
+                  of days you work.
                 </p>
               </div>
               <ButtonLink
@@ -359,31 +329,7 @@ export default function WorkerDashboardPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
-          {coverage.map((item) => (
-            <div
-              key={item.title}
-              className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-cream/50 p-4"
-            >
-              <span
-                className={`grid size-10 shrink-0 place-items-center rounded-xl ${item.tone}`}
-              >
-                <item.icon aria-hidden="true" className="size-5" />
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold">{item.title}</h3>
-                  <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-forest">
-                    Covered
-                  </span>
-                </div>
-                <p className="mt-1 text-xs leading-relaxed text-muted">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <CoverageGrid variant="inline" />
 
         <div className="mt-5 flex flex-col justify-between gap-4 rounded-2xl bg-forest-light/60 p-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">

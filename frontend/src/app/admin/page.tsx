@@ -12,7 +12,6 @@ import {
   Check,
   CircleAlert,
   FileText,
-  Lock,
   MapPin,
   RefreshCw,
   ShieldAlert,
@@ -22,7 +21,10 @@ import {
   X,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/page-header";
+import { SignInPrompt } from "@/components/sign-in-prompt";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { DISRUPTION_META } from "@/lib/disruptions";
 import {
   ClaimStatusBadge,
   EmptyState,
@@ -50,12 +52,6 @@ import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
 
 type Tab = "workers" | "claims";
-
-const disruptionTone = {
-  Rain: "bg-rain/10 text-rain",
-  Heat: "bg-heat/10 text-heat",
-  Pollution: "bg-smog/10 text-smog",
-};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -92,74 +88,63 @@ export default function AdminPage() {
   // Not logged in: Show Admin Authentication Required screen
   if (!isLoggedIn) {
     return (
-      <div className="page-container py-16 sm:py-24">
-        <div className="mx-auto max-w-md rounded-3xl border border-ink/10 bg-paper p-8 text-center shadow-soft">
-          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-forest-light text-forest">
-            <Lock aria-hidden="true" className="size-6" />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
-            Admin login required
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            The Admin dashboard is only accessible to administrators. Please log in with the administrator account to continue.
+      <SignInPrompt
+        title="Admin login required"
+        description="The Admin dashboard is only accessible to administrators. Please log in with the administrator account to continue."
+      >
+        <div className="rounded-2xl border border-forest/20 bg-forest-light/60 p-3 text-left">
+          <p className="text-xs font-semibold text-forest">
+            Default Admin Credentials
           </p>
-
-          <div className="mt-6 rounded-2xl border border-forest/20 bg-forest-light/60 p-3 text-left">
-            <p className="text-xs font-semibold text-forest">Default Admin Credentials</p>
-            <p className="mt-1 text-xs text-forest/80">
-              Username: <code className="font-semibold text-ink">admin</code> &nbsp;|&nbsp;
-              Password: <code className="font-semibold text-ink">admin123</code>
-            </p>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-2.5">
-            <ButtonLink href="/login?redirect=/admin" size="lg" className="w-full">
-              Log in as Admin
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </ButtonLink>
-            <ButtonLink href="/" variant="secondary" className="w-full">
-              Back to Home
-            </ButtonLink>
-          </div>
+          <p className="mt-1 text-xs text-forest/80">
+            Username: <code className="font-semibold text-ink">admin</code>{" "}
+            &nbsp;|&nbsp; Password:{" "}
+            <code className="font-semibold text-ink">admin123</code>
+          </p>
         </div>
-      </div>
+        <ButtonLink href="/login?redirect=/admin" size="lg" className="w-full">
+          Log in as Admin
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </ButtonLink>
+        <ButtonLink href="/" variant="secondary" className="w-full">
+          Back to Home
+        </ButtonLink>
+      </SignInPrompt>
     );
   }
 
   // Logged in as Worker: Access Denied for Admin portal
   if (!isAdmin) {
     return (
-      <div className="page-container py-16 sm:py-24">
-        <div className="mx-auto max-w-md rounded-3xl border border-danger/20 bg-paper p-8 text-center shadow-soft">
-          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-danger/10 text-danger">
-            <ShieldAlert aria-hidden="true" className="size-6" />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
-            Admin Access Only
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            You are logged in as <strong className="text-ink">{user?.full_name || user?.username}</strong> (Worker).
-            The Admin console is restricted to administrators only.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2.5">
-            <ButtonLink href="/dashboard" size="lg" className="w-full">
-              Go to your worker dashboard
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </ButtonLink>
-            <button
-              type="button"
-              onClick={() => {
-                logout();
-                router.push("/login?redirect=/admin");
-              }}
-              className="mt-2 text-xs font-semibold text-muted transition hover:text-danger"
-            >
-              Log out and sign in with admin account
-            </button>
-          </div>
-        </div>
-      </div>
+      <SignInPrompt
+        tone="danger"
+        icon={ShieldAlert}
+        title="Admin Access Only"
+        description={
+          <>
+            You are logged in as{" "}
+            <strong className="text-ink">
+              {user?.full_name || user?.username}
+            </strong>{" "}
+            (Worker). The Admin console is restricted to administrators only.
+          </>
+        }
+      >
+        <ButtonLink href="/dashboard" size="lg" className="w-full">
+          Go to your worker dashboard
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </ButtonLink>
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            router.push("/login?redirect=/admin");
+          }}
+          className="mt-2 text-xs font-semibold text-muted transition hover:text-danger"
+        >
+          Log out and sign in with admin account
+        </button>
+      </SignInPrompt>
     );
   }
 
@@ -177,31 +162,24 @@ export default function AdminPage() {
 
   return (
     <div className="page-container py-10 sm:py-16">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow">
-            <Activity aria-hidden="true" className="size-3.5" />
-            Admin console
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Portfolio at a glance.
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-            Worker profiles come from the FastAPI backend. Policies and claims
-            below are local prototype records from this browser.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="md" onClick={reload}>
-            <RefreshCw aria-hidden="true" className="size-4" />
-            Refresh workers
-          </Button>
-          <ButtonLink href="/login?tab=signup" size="md">
-            Add worker
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </ButtonLink>
-        </div>
-      </div>
+      <PageHeader
+        icon={Activity}
+        eyebrow="Admin console"
+        title="Portfolio at a glance."
+        description="Worker profiles come from the FastAPI backend. Policies and claims below are local prototype records from this browser."
+        actions={
+          <>
+            <Button variant="secondary" size="md" onClick={reload}>
+              <RefreshCw aria-hidden="true" className="size-4" />
+              Refresh workers
+            </Button>
+            <ButtonLink href="/login?tab=signup" size="md">
+              Add worker
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </ButtonLink>
+          </>
+        }
+      />
 
       {loading ? (
         <div className="mt-8">
@@ -437,7 +415,7 @@ export default function AdminPage() {
                         <span
                           className={cn(
                             "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                            disruptionTone[claim.disruption],
+                            DISRUPTION_META[claim.disruption].tone,
                           )}
                         >
                           {claim.disruption}

@@ -111,7 +111,7 @@ pnpm dev
 - `/login` — Unified authentication page with **Log in** and **Sign up** tabs, password creation, validation, and admin quick-fill.
 - `/dashboard` — Saved worker profile hub backed by `GET /workers` (requires worker/admin login).
 - `/dashboard/{workerId}` — Worker profile backed by `GET /workers/{worker_id}`.
-- `/dashboard/{workerId}/premium` — Premium calculator connected to `POST /pricing/estimate`, with the full breakdown and a ₹49–₹99 final range.
+- `/dashboard/{workerId}/premium` — Premium calculator connected to `POST /pricing/estimate`. The worker picks a risk zone; the app derives the risk score and shows a ₹49–₹99 final range.
 - `/policy` — Weekly policy activation, coverage details, claim filing and claim history (requires login).
 - `/admin` — Admin portfolio and claim review queue (only visible and accessible to `admin`).
 

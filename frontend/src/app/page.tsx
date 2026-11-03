@@ -62,7 +62,7 @@ const steps = [
     number: "02",
     title: "Get a weekly premium",
     description:
-      "Tell us your location risk, a simulated risk score and working days. See the full breakdown.",
+      "Pick your risk zone and working days. We estimate your risk score and show the full breakdown.",
   },
   {
     number: "03",

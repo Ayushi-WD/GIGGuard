@@ -1,3 +1,4 @@
+import { DISRUPTIONS, type Disruption } from "@/lib/disruptions";
 import type {
   AuthUser,
   LocationRisk,
@@ -5,6 +6,9 @@ import type {
   PricingEstimate,
   Worker,
 } from "@/lib/types";
+
+export { DISRUPTIONS };
+export type { Disruption };
 
 const KEYS = {
   activeWorker: "gigguard.activeWorkerId",
@@ -37,9 +41,6 @@ export interface PolicyRecord {
   startedAt: string;
   renewsAt: string;
 }
-
-export const DISRUPTIONS = ["Rain", "Heat", "Pollution"] as const;
-export type Disruption = (typeof DISRUPTIONS)[number];
 
 export const CLAIM_STATUSES = ["Under review", "Approved", "Rejected"] as const;
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
