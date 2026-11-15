@@ -22,11 +22,14 @@ copy `.env.example` to `.env.local` and set `BACKEND_URL`.
 - `/dashboard` — saved worker profiles (`GET /workers`)
 - `/dashboard/[workerId]` — worker dashboard (`GET /workers/{worker_id}`)
 - `/dashboard/[workerId]/premium` — premium calculator (`POST /pricing/estimate`); the risk score is derived from the chosen zone
-- `/policy` — prototype weekly policy and claims
-- `/admin` — worker portfolio and local claim review queue
+- `/policy` — Coming Soon preview of disruption alerts, claims and payouts
+- `/about` — About GIG-Guard, How It Works and FAQ
+- `/admin` — read-only worker overview
 
-Policies, claims and admin claim actions are frontend-only prototypes stored in
-browser `localStorage`, because the backend does not expose those endpoints yet.
+Premiums are estimates only. The prototype does not issue policies, take
+payments or process payouts, and the claims page is deliberately non-functional.
+The only browser-local data is the latest premium estimate per worker, used to
+populate the dashboard cards.
 
 ## Checks
 

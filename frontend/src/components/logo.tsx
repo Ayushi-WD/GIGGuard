@@ -16,8 +16,8 @@ export function Logo({ className, inverse = false }: LogoProps) {
     >
       <span
         className={cn(
-          "grid size-10 place-items-center rounded-[0.9rem] shadow-sm transition-transform duration-300 group-hover:-rotate-3",
-          inverse ? "bg-lime text-forest-dark" : "bg-forest text-lime",
+          "grid size-10 place-items-center rounded-xl shadow-sm transition-transform duration-300 group-hover:-rotate-3",
+          inverse ? "bg-teal text-white" : "bg-navy text-white",
         )}
       >
         <svg
@@ -32,18 +32,18 @@ export function Logo({ className, inverse = false }: LogoProps) {
           />
           <path
             d="m17.7 9.1-6.2 8.4h4.2l-1.2 5.9 6.2-8.4h-4.2l1.2-5.9Z"
-            fill={inverse ? "#073b2b" : "#d9f36a"}
+            fill={inverse ? "#0e7c72" : "#5eead4"}
           />
         </svg>
       </span>
       <span
         className={cn(
           "text-[1.06rem] font-semibold tracking-tight",
-          inverse ? "text-cream" : "text-ink",
+          inverse ? "text-white" : "text-navy",
         )}
       >
         GIG
-        <span className={inverse ? "text-lime" : "text-forest"}>-</span>
+        <span className={inverse ? "text-teal-light" : "text-teal"}>-</span>
         Guard
       </span>
     </Link>

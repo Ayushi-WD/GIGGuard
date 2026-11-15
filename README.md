@@ -8,10 +8,10 @@
 - Built the FastAPI backend with authentication, worker registration and pricing APIs.
 - Saved user credentials and worker profiles in SQLite using SQLAlchemy.
 - Added a weekly premium calculator with a range of INR 49–99.
-- Built the Next.js frontend with authentication (Login/Sign Up with password), landing, worker dashboard, premium calculator, policy & claims and admin console.
-- Added role-based access control: visitors only see Home and Login; logged-in workers see Dashboard and Policy & Claims with profile icon and Logout; administrators see Admin console with default credentials.
+- Built the Next.js frontend as a six-page prototype: landing, worker registration, worker dashboard, premium estimate, disruptions/claims preview, and an About/FAQ page, plus login and a read-only admin console.
+- Added role-based access control: visitors see Home, How It Works, Benefits, About Us and Login/Register; logged-in workers see Dashboard, My Profile, Premium Calculator and Help with a profile icon and Logout; administrators see the Admin console with default credentials.
 - Connected registration, dashboard and pricing pages to the live API with typed Fetch API calls.
-- Added a browser-local prototype flow for activating weekly policies, filing claims and reviewing them in the admin console.
+- Kept the disruption, claim and payout UI as a clearly labelled Coming Soon preview because those backend modules do not exist yet. Active pages only register workers and estimate premiums.
 - Tested the APIs through Swagger UI.
 - Integrated the trained Random Forest prototype with FastAPI and the premium calculator.
 - Used 12 features and 20,000 synthetic worker-risk profiles.
@@ -107,13 +107,15 @@ pnpm dev
 
 ## Frontend Pages
 
-- `/` — Landing page with the GIG-Guard pitch, rain/heat/pollution cover and dynamic header according to login state.
+- `/` — Landing page with the hero message, four benefit cards, the four-step workflow and supported platforms.
 - `/login` — Unified authentication page with **Log in** and **Sign up** tabs, password creation, validation, and admin quick-fill.
-- `/dashboard` — Saved worker profile hub backed by `GET /workers` (requires worker/admin login).
-- `/dashboard/{workerId}` — Worker profile backed by `GET /workers/{worker_id}`.
-- `/dashboard/{workerId}/premium` — Premium calculator connected to `POST /pricing/estimate`. The worker picks a risk zone; the app derives the risk score and shows a ₹49–₹99 final range.
-- `/policy` — Weekly policy activation, coverage details, claim filing and claim history (requires login).
-- `/admin` — Admin portfolio and claim review queue (only visible and accessible to `admin`).
+- `/register` — Worker registration form (`POST /workers`) with name, city, platform, average daily income and experience.
+- `/dashboard` — Saved worker profile chooser backed by `GET /workers`.
+- `/dashboard/{workerId}` — Worker dashboard with overview cards, a premium CTA, profile summary and the four-step workflow.
+- `/dashboard/{workerId}/premium` — Premium calculator connected to `POST /pricing/estimate`. The worker picks a risk zone; the app derives the risk score and shows the full breakdown capped at ₹49–₹99.
+- `/policy` — Coming Soon preview of disruption alerts, claims and payouts. Nothing can be filed, approved or paid.
+- `/about` — About GIG-Guard, How It Works and the FAQ.
+- `/admin` — Read-only worker overview (only visible and accessible to `admin`).
 
 ## Notes
 
@@ -121,5 +123,5 @@ pnpm dev
 - ML pricing uses the predicted score with the existing Decimal-based formula and INR 49–99 limits.
 - Environmental inputs are supplied manually; there is no live weather or AQI integration.
 - The ML prototype only supports income INR 200–2,000 and experience 0–3,650 days. Workers outside that range receive 422 for ML pricing.
-- Next steps include the Next.js dashboard, weather triggers, payout calculations, fraud checks and PostgreSQL.
-- Real insurance payments are not implemented.
+- Next steps include disruption trigger detection, claim verification, payout processing, fraud checks and PostgreSQL.
+- Policies, payments and payouts are not implemented. Premiums shown in the UI are estimates only.

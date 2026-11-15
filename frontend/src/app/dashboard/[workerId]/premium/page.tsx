@@ -1,9 +1,9 @@
 "use client";
 
-/* eslint-disable react-hooks/set-state-in-effect -- This page hydrates client-only localStorage estimates after the worker loads. */
+/* eslint-disable react-hooks/set-state-in-effect -- The saved estimate is read from browser storage after the worker loads. */
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -20,14 +20,9 @@ import { PageHeader } from "@/components/page-header";
 import { EstimatePanel } from "@/components/premium/estimate-panel";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/feedback";
+import { ApiError, estimatePremium } from "@/lib/api";
 import { formatINR, firstName } from "@/lib/format";
-import {
-  activatePolicy,
-  getPolicy,
-  getSavedEstimate,
-  saveEstimate,
-  type PolicyRecord,
-} from "@/lib/storage";
+import { getSavedEstimate, saveEstimate } from "@/lib/storage";
 import {
   LOCATION_RISKS,
   LOCATION_RISK_COPY,
@@ -35,14 +30,24 @@ import {
   type LocationRisk,
   type PricingEstimate,
 } from "@/lib/types";
-import { ApiError, estimatePremium } from "@/lib/api";
 import { useWorker } from "@/lib/use-worker";
 
 const dayOptions = [1, 2, 3, 4, 5, 6, 7];
 
+const riskActiveStyles: Record<LocationRisk, string> = {
+  low: "border-success bg-success/10",
+  medium: "border-warning bg-warning/10",
+  high: "border-danger bg-danger/10",
+};
+
+const riskTextStyles: Record<LocationRisk, string> = {
+  low: "text-success",
+  medium: "text-warning",
+  high: "text-danger",
+};
+
 export default function PremiumCalculatorPage() {
   const params = useParams<{ workerId: string }>();
-  const router = useRouter();
   const workerId = params.workerId;
   const { worker, loading, error, reload } = useWorker(workerId);
 
@@ -52,7 +57,6 @@ export default function PremiumCalculatorPage() {
   const [resultKey, setResultKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [policy, setPolicy] = useState<PolicyRecord | null>(null);
 
   // Workers only choose their zone; the score is derived for the pricing API.
   const riskScore = LOCATION_RISK_SCORE[locationRisk];
@@ -63,8 +67,6 @@ export default function PremiumCalculatorPage() {
     if (!worker) {
       return;
     }
-
-    setPolicy(getPolicy(worker.id));
 
     const saved = getSavedEstimate(worker.id);
     if (saved) {
@@ -101,7 +103,6 @@ export default function PremiumCalculatorPage() {
         riskScore,
         workDaysPerWeek: workDays,
       });
-      setPolicy(getPolicy(worker.id));
     } catch (caught) {
       setFormError(
         caught instanceof ApiError
@@ -111,22 +112,6 @@ export default function PremiumCalculatorPage() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function handleActivate() {
-    if (!worker || !result) {
-      return;
-    }
-
-    const activated = activatePolicy(worker, {
-      estimate: result,
-      locationRisk,
-      riskScore,
-      workDaysPerWeek: workDays,
-      savedAt: new Date().toISOString(),
-    });
-    setPolicy(activated);
-    router.push("/policy");
   }
 
   if (loading) {
@@ -163,7 +148,7 @@ export default function PremiumCalculatorPage() {
     <div className="page-container py-10 sm:py-16">
       <Link
         href={`/dashboard/${worker.id}`}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition hover:text-ink"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition hover:text-navy"
       >
         <ArrowLeft aria-hidden="true" className="size-3.5" />
         Back to dashboard
@@ -173,26 +158,26 @@ export default function PremiumCalculatorPage() {
         className="mt-6"
         icon={Sparkles}
         eyebrow="Premium calculator"
-        title="Build your weekly cover."
-        description={`${firstName(worker.full_name)}, choose your risk zone and tell us how many days you work. We estimate the risk score for you.`}
+        title="Calculate your weekly premium"
+        description={`${firstName(worker.full_name)}, choose a risk zone and your working days. We derive a risk score and send it to the existing pricing API.`}
         actions={
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-ink/10 bg-paper px-4 py-2 text-xs text-muted">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-xs text-muted">
             <BadgeIndianRupee
               aria-hidden="true"
-              className="size-3.5 text-forest"
+              className="size-3.5 text-teal"
             />
             Daily income {formatINR(worker.average_daily_income)}
           </div>
         }
       />
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
         <section className="card-surface p-6 sm:p-7">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Your week at a glance
+            <h2 className="text-lg font-semibold tracking-tight text-navy">
+              Estimate inputs
             </h2>
-            <span className="rounded-full bg-forest-light px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-forest">
+            <span className="rounded-full bg-teal-light px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-teal-dark">
               ₹49–₹99 range
             </span>
           </div>
@@ -212,23 +197,30 @@ export default function PremiumCalculatorPage() {
                       onClick={() => setLocationRisk(risk)}
                       className={`rounded-2xl border p-4 text-left transition ${
                         active
-                          ? "border-forest bg-forest-light shadow-sm"
-                          : "border-ink/10 bg-paper hover:border-forest/30 hover:bg-forest-light/30"
+                          ? riskActiveStyles[risk]
+                          : "border-line bg-white hover:border-teal/30 hover:bg-teal-light/30"
                       }`}
                     >
                       <span className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold">
+                        <span
+                          className={`text-sm font-semibold ${
+                            active ? riskTextStyles[risk] : "text-navy"
+                          }`}
+                        >
                           {copy.label}
                         </span>
                         <span
                           className={`grid size-4 place-items-center rounded-full border ${
                             active
-                              ? "border-forest bg-forest text-cream"
-                              : "border-ink/20"
+                              ? `border-current bg-current ${riskTextStyles[risk]}`
+                              : "border-line"
                           }`}
                         >
                           {active ? (
-                            <Check aria-hidden="true" className="size-2.5" />
+                            <Check
+                              aria-hidden="true"
+                              className="size-2.5 text-white"
+                            />
                           ) : null}
                         </span>
                       </span>
@@ -241,21 +233,22 @@ export default function PremiumCalculatorPage() {
               </div>
             </fieldset>
 
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-forest/15 bg-forest-light/40 px-4 py-3.5">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-teal/15 bg-teal-light/50 px-4 py-3.5">
               <div className="flex items-start gap-2.5">
                 <Sparkles
                   aria-hidden="true"
-                  className="mt-0.5 size-4 shrink-0 text-forest"
+                  className="mt-0.5 size-4 shrink-0 text-teal"
                 />
                 <div>
-                  <p className="text-xs font-semibold">Estimated risk score</p>
+                  <p className="text-xs font-semibold text-navy">
+                    Derived risk score
+                  </p>
                   <p className="mt-0.5 text-[0.7rem] leading-relaxed text-muted">
-                    Set automatically from your zone. You do not need to enter
-                    it.
+                    Low 30, medium 55, high 80. You do not need to enter it.
                   </p>
                 </div>
               </div>
-              <span className="rounded-full bg-forest px-3 py-1 text-sm font-semibold text-cream">
+              <span className="rounded-full bg-navy px-3 py-1 text-sm font-semibold text-white">
                 {riskScore} / 100
               </span>
             </div>
@@ -273,8 +266,8 @@ export default function PremiumCalculatorPage() {
                       onClick={() => setWorkDays(day)}
                       className={`rounded-xl py-2.5 text-sm font-semibold transition ${
                         active
-                          ? "bg-forest text-cream shadow-sm"
-                          : "bg-cream text-muted hover:bg-forest-light hover:text-forest"
+                          ? "bg-teal text-white shadow-sm"
+                          : "bg-mist text-muted hover:bg-teal-light hover:text-teal-dark"
                       }`}
                     >
                       {day}
@@ -282,15 +275,15 @@ export default function PremiumCalculatorPage() {
                   );
                 })}
               </div>
-              <div className="mt-3 flex flex-col justify-between gap-2 rounded-xl bg-cream/70 px-4 py-3 text-xs text-muted sm:flex-row sm:items-center">
+              <div className="mt-3 flex flex-col justify-between gap-2 rounded-xl bg-mist px-4 py-3 text-xs text-muted sm:flex-row sm:items-center">
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays
                     aria-hidden="true"
-                    className="size-3.5 text-forest"
+                    className="size-3.5 text-teal"
                   />
                   {workDays} days × {formatINR(dailyIncome)} daily income
                 </span>
-                <span className="font-semibold text-ink">
+                <span className="font-semibold text-navy">
                   {formatINR(weeklyIncome)} weekly income
                 </span>
               </div>
@@ -330,10 +323,10 @@ export default function PremiumCalculatorPage() {
             <p className="flex items-start gap-2 text-xs leading-relaxed text-muted">
               <Info
                 aria-hidden="true"
-                className="mt-0.5 size-3.5 shrink-0 text-forest"
+                className="mt-0.5 size-3.5 shrink-0 text-teal"
               />
-              The risk score is estimated from your zone. This prototype does
-              not read live weather or AQI data.
+              The risk score is estimated from the zone you select. This
+              prototype does not read live weather or AQI data.
             </p>
           </form>
         </section>
@@ -341,9 +334,8 @@ export default function PremiumCalculatorPage() {
         <aside className="lg:sticky lg:top-24">
           <EstimatePanel
             result={result}
-            policy={policy}
             isStale={isStale}
-            onActivate={handleActivate}
+            dashboardHref={`/dashboard/${worker.id}`}
           />
         </aside>
       </div>

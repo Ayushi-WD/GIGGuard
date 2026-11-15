@@ -1,22 +1,16 @@
 "use client";
 
-/* eslint-disable react-hooks/set-state-in-effect -- This page reads the active worker id from client-only localStorage after mount. */
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  ArrowUpRight,
   BadgeIndianRupee,
   Clock3,
-  LogIn,
   MapPin,
   Plus,
   Users,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { SignInPrompt } from "@/components/sign-in-prompt";
 import { ButtonLink } from "@/components/ui/button";
 import {
   EmptyState,
@@ -24,84 +18,38 @@ import {
   LoadingState,
   PlatformBadge,
 } from "@/components/ui/feedback";
-import { formatExperience, formatINR, initials } from "@/lib/format";
-import { getActiveWorkerId, rememberWorker } from "@/lib/storage";
+import { cn, formatExperience, formatINR, initials } from "@/lib/format";
+import { getActiveWorkerId } from "@/lib/storage";
 import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
 
 export default function DashboardHubPage() {
-  const { user, isLoggedIn, isAdmin, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { workers, loading, error, reload } = useWorkers();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    // If logged in worker has worker_id, prioritize it
-    if (user?.worker_id) {
-      setActiveId(user.worker_id);
-      rememberWorker(user.worker_id);
-    } else {
-      setActiveId(getActiveWorkerId());
-    }
-    setReady(true);
-  }, [user]);
-
-  if (authLoading) {
-    return (
-      <div className="page-container flex min-h-[50vh] items-center justify-center">
-        <LoadingState label="Checking authorization..." />
-      </div>
-    );
-  }
-
-  // Not logged in: Show sign in prompt
-  if (!isLoggedIn) {
-    return (
-      <SignInPrompt
-        icon={LogIn}
-        title="Sign in to view your dashboard"
-        description="Please log in with your worker account or sign up to view and manage your income protection and weekly claims."
-      >
-        <ButtonLink href="/login" size="lg" className="w-full">
-          <LogIn aria-hidden="true" className="size-4" />
-          Log in to account
-        </ButtonLink>
-        <ButtonLink
-          href="/login?tab=signup"
-          variant="secondary"
-          className="w-full"
-        >
-          New user? Sign up here
-        </ButtonLink>
-      </SignInPrompt>
-    );
-  }
-
-  const activeWorker = workers.find((worker) => worker.id === activeId) ?? null;
+  const activeId = user?.worker_id ?? getActiveWorkerId();
+  const orderedWorkers = [...workers].sort((a, b) => {
+    if (a.id === activeId) return -1;
+    if (b.id === activeId) return 1;
+    return 0;
+  });
 
   return (
     <div className="page-container py-10 sm:py-16">
       <PageHeader
         icon={Users}
         eyebrow="Worker dashboard"
-        title="Pick up where you left off."
-        description="Open your saved worker profile to see your details, weekly premium and cover."
+        title="Worker profiles."
+        description="Pick a saved worker profile to see its dashboard, profile summary and premium estimate."
         actions={
-          <>
-            {isAdmin ? (
-              <ButtonLink href="/admin" variant="secondary" size="md">
-                Admin console
-              </ButtonLink>
-            ) : null}
-            <ButtonLink href="/login?tab=signup" variant="secondary" size="md">
-              <Plus aria-hidden="true" className="size-4" />
-              Add worker
-            </ButtonLink>
-          </>
+          <ButtonLink href="/register" size="md">
+            <Plus aria-hidden="true" className="size-4" />
+            Register worker
+          </ButtonLink>
         }
       />
 
-      {loading || !ready ? (
+      {loading ? (
         <div className="mt-10">
           <LoadingState label="Loading worker profiles…" />
         </div>
@@ -114,9 +62,9 @@ export default function DashboardHubPage() {
           <EmptyState
             icon={Users}
             title="No worker profiles yet"
-            description="Register your first worker profile to unlock the dashboard, premium calculator and weekly cover."
+            description="Register your first worker profile to unlock the dashboard and premium calculator."
             action={
-              <ButtonLink href="/login?tab=signup" size="md">
+              <ButtonLink href="/register" size="md">
                 Register as a worker
                 <ArrowRight aria-hidden="true" className="size-4" />
               </ButtonLink>
@@ -125,86 +73,44 @@ export default function DashboardHubPage() {
         </div>
       ) : (
         <>
-          {activeWorker ? (
-            <section className="relative mt-10 overflow-hidden rounded-[2rem] bg-forest p-6 text-cream shadow-soft sm:p-8">
-              <div className="bg-grid-lines pointer-events-none absolute inset-0 opacity-50" />
-              <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-4">
-                  <span className="grid size-14 place-items-center rounded-2xl bg-lime text-lg font-semibold text-forest-dark">
-                    {initials(activeWorker.full_name)}
-                  </span>
-                  <div>
-                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-lime">
-                      Current profile
-                    </p>
-                    <p className="mt-1 text-xl font-semibold">
-                      {activeWorker.full_name}
-                    </p>
-                    <p className="mt-1 text-sm text-cream/55">
-                      {activeWorker.city} · {activeWorker.platform}
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href={`/dashboard/${activeWorker.id}`}
-                  onClick={() => rememberWorker(activeWorker.id)}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-lime px-5 py-3 text-sm font-semibold text-ink transition hover:bg-lime/85"
-                >
-                  Open my dashboard
-                  <ArrowUpRight aria-hidden="true" className="size-4" />
-                </Link>
-              </div>
-            </section>
-          ) : null}
-
-          <div className="mt-10 flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold tracking-tight">
-              {workers.length} registered{" "}
-              {workers.length === 1 ? "profile" : "profiles"}
-            </h2>
-            {isAdmin ? (
-              <Link
-                href="/admin"
-                className="text-xs font-semibold text-forest hover:underline"
-              >
-                View admin overview
-              </Link>
-            ) : null}
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {workers.map((worker) => {
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {orderedWorkers.map((worker) => {
               const active = worker.id === activeId;
               return (
                 <Link
                   key={worker.id}
                   href={`/dashboard/${worker.id}`}
-                  onClick={() => rememberWorker(worker.id)}
-                  className="card-surface group relative p-5 transition duration-300 hover:-translate-y-1 hover:shadow-soft"
+                  className={cn(
+                    "group relative rounded-2xl border bg-white p-5 shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-soft",
+                    active
+                      ? "border-teal/40 ring-1 ring-teal/10"
+                      : "border-line hover:border-teal/25",
+                  )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="grid size-11 place-items-center rounded-2xl bg-forest-light text-sm font-semibold text-forest">
+                    <span className="grid size-11 place-items-center rounded-xl bg-teal-light text-sm font-semibold text-teal-dark">
                       {initials(worker.full_name)}
                     </span>
                     <div className="flex items-center gap-2">
                       {active ? (
-                        <span className="rounded-full bg-lime-soft px-2.5 py-1 text-[0.65rem] font-semibold text-forest-dark">
-                          Active
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[0.6rem] font-semibold text-success">
+                          <span className="size-1.5 rounded-full bg-success" />
+                          Current
                         </span>
                       ) : null}
                       <PlatformBadge platform={worker.platform} />
                     </div>
                   </div>
 
-                  <h3 className="mt-4 text-lg font-semibold tracking-tight">
+                  <h2 className="mt-4 text-lg font-semibold tracking-tight text-navy">
                     {worker.full_name}
-                  </h3>
+                  </h2>
                   <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted">
                     <MapPin aria-hidden="true" className="size-3.5" />
                     {worker.city}
                   </p>
 
-                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-ink/10 pt-4">
+                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4">
                     <div>
                       <p className="inline-flex items-center gap-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted">
                         <BadgeIndianRupee
@@ -213,7 +119,7 @@ export default function DashboardHubPage() {
                         />
                         Daily
                       </p>
-                      <p className="mt-1 text-sm font-semibold">
+                      <p className="mt-1 text-sm font-semibold text-navy">
                         {formatINR(worker.average_daily_income)}
                       </p>
                     </div>
@@ -222,13 +128,13 @@ export default function DashboardHubPage() {
                         <Clock3 aria-hidden="true" className="size-3" />
                         Experience
                       </p>
-                      <p className="mt-1 text-sm font-semibold">
+                      <p className="mt-1 text-sm font-semibold text-navy">
                         {formatExperience(worker.experience_days)}
                       </p>
                     </div>
                   </div>
 
-                  <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-forest">
+                  <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-teal">
                     Open dashboard
                     <ArrowRight
                       aria-hidden="true"
@@ -239,6 +145,11 @@ export default function DashboardHubPage() {
               );
             })}
           </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-muted">
+            Profiles come from the GIG-Guard API. Premium estimates are stored
+            in this browser. No policy, payment or payout is created.
+          </p>
         </>
       )}
     </div>

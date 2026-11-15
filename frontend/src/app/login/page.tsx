@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { LoaderCircle, LogIn, Sparkles, UserPlus } from "lucide-react";
 
@@ -32,30 +33,30 @@ function AuthContent() {
       <div className="mx-auto max-w-xl">
         <div className="text-center">
           <p className="eyebrow inline-flex">
-            <Sparkles aria-hidden="true" className="size-3.5 text-forest" />
+            <Sparkles aria-hidden="true" className="size-3.5 text-teal" />
             GIG-Guard Access
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-navy sm:text-4xl">
             {activeTab === "login"
               ? "Welcome back"
               : "Create your worker account"}
           </h1>
           <p className="mt-2 text-sm text-muted sm:text-base">
             {activeTab === "login"
-              ? "Sign in to manage your protection, policies and weather disruption claims."
-              : "Register as a delivery partner to get personalized weekly income cover."}
+              ? "Sign in to open your worker dashboard and premium estimate."
+              : "Create an account linked to a worker profile and its premium estimate."}
           </p>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 rounded-2xl border border-ink/10 bg-cream/70 p-1.5 shadow-xs">
+        <div className="mt-8 grid grid-cols-2 rounded-2xl border border-line bg-mist p-1.5 shadow-xs">
           <button
             type="button"
             onClick={() => setActiveTab("login")}
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition",
               activeTab === "login"
-                ? "bg-paper text-ink shadow-sm"
-                : "text-muted hover:text-ink",
+                ? "bg-white text-navy shadow-sm"
+                : "text-muted hover:text-navy",
             )}
           >
             <LogIn aria-hidden="true" className="size-4" />
@@ -67,8 +68,8 @@ function AuthContent() {
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition",
               activeTab === "signup"
-                ? "bg-paper text-ink shadow-sm"
-                : "text-muted hover:text-ink",
+                ? "bg-white text-navy shadow-sm"
+                : "text-muted hover:text-navy",
             )}
           >
             <UserPlus aria-hidden="true" className="size-4" />
@@ -87,6 +88,16 @@ function AuthContent() {
             onSwitch={() => setActiveTab("login")}
           />
         )}
+
+        <p className="mt-5 text-center text-xs text-muted">
+          Prefer the short worker form?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-teal underline hover:text-teal-dark"
+          >
+            Register a worker profile
+          </Link>
+        </p>
       </div>
     </div>
   );

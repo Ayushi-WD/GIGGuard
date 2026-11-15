@@ -409,7 +409,7 @@ export function SignupForm({
             </>
           ) : (
             <>
-              Create account &amp; get covered
+              Create account &amp; estimate premium
               <ArrowRight aria-hidden="true" className="size-4" />
             </>
           )}

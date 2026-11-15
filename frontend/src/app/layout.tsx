@@ -22,11 +22,11 @@ export const metadata: Metadata = {
     template: "%s | GIG-Guard",
   },
   description:
-    "Weekly income protection for delivery partners. Cover for rain, heat and pollution disruptions, with premiums from ₹49 to ₹99 per week.",
+    "GIG-Guard helps gig delivery workers understand and estimate protection against income lost to rain, heat, floods and other disruptions.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0c5a42",
+  themeColor: "#0b1f33",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

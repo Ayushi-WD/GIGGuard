@@ -1,201 +1,242 @@
 import {
-  ArrowRight,
-  Check,
-  CircleCheck,
-  ShieldCheck,
+  ArrowLeft,
+  BadgeInfo,
+  Calculator,
+  Info,
+  Sparkles,
 } from "lucide-react";
 
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { formatINR, formatSignedINR } from "@/lib/format";
-import type { PolicyRecord } from "@/lib/storage";
 import type { PricingEstimate } from "@/lib/types";
+
+const EXAMPLE = {
+  base: 72,
+  risk: 54,
+  location: 12.6,
+  experience: -10.08,
+  raw: 128.52,
+  final: 99,
+};
 
 export function EstimatePanel({
   result,
-  policy,
   isStale,
-  onActivate,
+  dashboardHref,
 }: {
   result: PricingEstimate | null;
-  policy: PolicyRecord | null;
   isStale: boolean;
-  onActivate: () => void;
+  dashboardHref: string;
 }) {
-  if (!result) {
-    return (
-      <section className="relative overflow-hidden rounded-3xl border border-dashed border-forest/25 bg-forest-light/40 p-6 sm:p-7">
-        <p className="eyebrow">Your estimate</p>
-        <p className="mt-5 text-4xl font-semibold tracking-[-0.04em]">
-          ₹49–₹99
-        </p>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
-          Pick your zone and working days, then calculate to see the full
-          premium breakdown, including risk, location and experience
-          adjustments.
-        </p>
+  const finalPremium = result
+    ? Number(result.final_weekly_premium)
+    : EXAMPLE.final;
 
-        <ul className="mt-6 space-y-3 text-sm text-muted">
-          {[
-            "Base premium from weekly income",
-            "Risk loading from your estimated score",
-            "Location and experience adjustments",
-            "Final premium clamped to ₹49–₹99",
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-2.5">
-              <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-forest text-cream">
-                <Check aria-hidden="true" className="size-2.5" />
-              </span>
-              {item}
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-7 rounded-2xl border border-forest/15 bg-paper/70 p-4 text-xs leading-relaxed text-muted">
-          Your last saved estimate for this worker will appear here when you
-          return.
-        </div>
-      </section>
-    );
-  }
+  const rows = result
+    ? [
+        { label: "Base premium", value: formatINR(result.base_premium, { decimals: 2 }) },
+        { label: "Risk loading", value: formatSignedINR(result.risk_loading) },
+        {
+          label: "Location adjustment",
+          value: formatSignedINR(result.location_adjustment),
+        },
+        {
+          label: "Experience adjustment",
+          value: formatSignedINR(result.experience_adjustment),
+        },
+        { label: "Raw premium", value: formatINR(result.raw_premium, { decimals: 2 }) },
+        {
+          label: "Capped premium",
+          value: formatINR(result.final_weekly_premium, { decimals: 2 }),
+          emphasis: true,
+        },
+      ]
+    : [
+        { label: "Base premium", value: formatINR(EXAMPLE.base, { decimals: 2 }) },
+        { label: "Risk loading", value: formatSignedINR(EXAMPLE.risk) },
+        {
+          label: "Location adjustment",
+          value: formatSignedINR(EXAMPLE.location),
+        },
+        {
+          label: "Experience adjustment",
+          value: formatSignedINR(EXAMPLE.experience),
+        },
+        { label: "Raw premium", value: formatINR(EXAMPLE.raw, { decimals: 2 }) },
+        {
+          label: "Capped premium",
+          value: formatINR(EXAMPLE.final, { decimals: 2 }),
+          emphasis: true,
+        },
+      ];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-cream shadow-soft sm:p-7">
-      <div className="bg-grid-lines pointer-events-none absolute inset-0 opacity-50" />
-      <div className="relative">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-lime">
-            Your weekly estimate
-          </p>
-          {policy ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/15 px-2.5 py-1 text-[0.65rem] font-semibold text-lime">
-              <span className="status-dot" />
-              Policy active
+    <section className="overflow-hidden rounded-3xl border border-line bg-white shadow-card">
+      <div className="relative overflow-hidden bg-navy p-6 text-white sm:p-7">
+        <div className="bg-grid-lines pointer-events-none absolute inset-0 opacity-40" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border-[32px] border-teal/20"
+        />
+
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-teal-light">
+              Your Premium Estimate
+            </p>
+            <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-white/75">
+              {result ? "Estimate" : "Example"}
             </span>
-          ) : (
-            <span className="rounded-full bg-cream/10 px-2.5 py-1 text-[0.65rem] font-semibold text-cream/65">
-              Estimate
+          </div>
+
+          <div className="mt-6 flex items-end gap-2">
+            <span className="text-5xl font-semibold tracking-[-0.05em] sm:text-6xl">
+              {formatINR(finalPremium, { decimals: 2 })}
             </span>
-          )}
-        </div>
-
-        <div className="mt-6 flex items-end gap-2">
-          <span className="text-6xl font-semibold tracking-[-0.055em]">
-            {formatINR(result.final_weekly_premium, { decimals: 2 })}
-          </span>
-          <span className="pb-2 text-sm text-cream/50">/ week</span>
-        </div>
-        <p className="mt-1 text-sm text-cream/55">
-          Protecting {formatINR(result.weekly_income)} of weekly income
-        </p>
-
-        <div className="mt-6">
-          <div className="flex items-center justify-between text-[0.65rem] text-cream/45">
-            <span>₹49</span>
-            <span>₹99</span>
+            <span className="pb-2 text-sm text-white/60">/ week</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-cream/10">
-            <div
-              className="h-full rounded-full bg-lime transition-all duration-500"
-              style={{
-                width: `${Math.min(
-                  100,
-                  Math.max(
-                    4,
-                    ((Number(result.final_weekly_premium) - 49) / 50) * 100,
-                  ),
-                )}%`,
-              }}
-            />
-          </div>
-          <p className="mt-2 text-[0.68rem] text-cream/45">
-            Final premium is clamped to the ₹49–₹99 weekly range.
+          <p className="mt-1 text-sm text-white/55">
+            {result
+              ? `Estimated from ${formatINR(result.weekly_income)} of weekly income`
+              : "Illustrative sample: high-risk zone, 6 working days"}
           </p>
-        </div>
 
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-[0.65rem] text-white/60">
+              <span>₹49</span>
+              <span>₹99</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-teal-light transition-all duration-500"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    Math.max(4, ((finalPremium - 49) / 50) * 100),
+                  )}%`,
+                }}
+              />
+            </div>
+            <p className="mt-2 text-[0.68rem] text-white/60">
+              The prototype caps every estimate between ₹49 and ₹99.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 sm:p-7">
         {isStale ? (
-          <div className="mt-5 rounded-xl border border-heat/25 bg-heat/10 px-3.5 py-2.5 text-[0.7rem] text-cream/75">
-            Inputs changed. Recalculate to refresh this estimate.
+          <div className="mb-4 rounded-xl border border-warning/25 bg-warning/10 px-3.5 py-2.5 text-xs text-warning">
+            Inputs changed. Calculate again to refresh this estimate.
           </div>
         ) : null}
 
-        <dl className="mt-6 divide-y divide-cream/10 border-t border-cream/10 text-sm">
-          <BreakdownRow
-            label="Weekly income"
-            value={formatINR(result.weekly_income, { decimals: 2 })}
-          />
-          <BreakdownRow
-            label="Base premium (2%)"
-            value={formatINR(result.base_premium, { decimals: 2 })}
-          />
-          <BreakdownRow
-            label="Risk loading"
-            value={formatSignedINR(result.risk_loading)}
-          />
-          <BreakdownRow
-            label="Subtotal"
-            value={formatINR(result.subtotal, { decimals: 2 })}
-          />
-          <BreakdownRow
-            label="Location adjustment"
-            value={formatSignedINR(result.location_adjustment)}
-          />
-          <BreakdownRow
-            label="Experience adjustment"
-            value={formatSignedINR(result.experience_adjustment)}
-          />
-          <BreakdownRow
-            label="Raw premium"
-            value={formatINR(result.raw_premium, { decimals: 2 })}
-          />
-          <div className="flex items-center justify-between gap-3 py-3.5">
-            <dt className="font-semibold text-cream">Final weekly premium</dt>
-            <dd className="text-lg font-semibold text-lime">
-              {formatINR(result.final_weekly_premium, { decimals: 2 })}
-            </dd>
-          </div>
-        </dl>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-navy">
+            Premium breakdown
+          </h2>
+          <span className="inline-flex items-center gap-1 text-[0.65rem] text-muted">
+            <Calculator aria-hidden="true" className="size-3" />
+            {result ? "Your inputs" : "Illustrative figures"}
+          </span>
+        </div>
 
-        {policy ? (
-          <ButtonLink
-            href="/policy"
-            variant="lime"
-            size="lg"
-            className="mt-5 w-full"
-          >
-            View my policy
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </ButtonLink>
-        ) : (
-          <Button
-            variant="lime"
-            size="lg"
-            onClick={onActivate}
-            disabled={isStale}
-            className="mt-5 w-full"
-          >
-            <ShieldCheck aria-hidden="true" className="size-4" />
-            {isStale ? "Recalculate to activate" : "Activate this cover"}
-          </Button>
-        )}
+        <table className="mt-3 w-full text-sm">
+          <tbody className="divide-y divide-line">
+            {rows.map((row) => (
+              <tr
+                key={row.label}
+                className={row.emphasis ? "bg-teal-light/40" : undefined}
+              >
+                <th
+                  scope="row"
+                  className={`py-3 pr-3 text-left font-normal ${
+                    row.emphasis
+                      ? "pl-3 font-semibold text-navy"
+                      : "text-muted"
+                  }`}
+                >
+                  {row.label}
+                </th>
+                <td
+                  className={`py-3 text-right font-medium ${
+                    row.emphasis
+                      ? "pr-3 text-base font-semibold text-teal-dark"
+                      : "text-navy"
+                  }`}
+                >
+                  {row.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-        <p className="mt-4 flex items-start gap-2 text-[0.68rem] leading-relaxed text-cream/45">
-          <CircleCheck
+        {!result ? (
+          <p className="mt-4 flex items-start gap-2 rounded-xl bg-mist px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+            <BadgeInfo
+              aria-hidden="true"
+              className="mt-0.5 size-3.5 shrink-0 text-teal"
+            />
+            These are illustrative figures. Choose your zone and working days,
+            then calculate to replace them with your own estimate.
+          </p>
+        ) : null}
+
+        <div className="mt-5 rounded-2xl border border-line bg-mist/70 p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-navy">
+            <Info aria-hidden="true" className="size-3.5 text-teal" />
+            How each line is calculated
+          </p>
+          <ul className="mt-2.5 space-y-1.5 text-[0.7rem] leading-relaxed text-muted">
+            <li>
+              <strong className="text-navy">Base premium:</strong> calculated
+              using weekly income.
+            </li>
+            <li>
+              <strong className="text-navy">Risk loading:</strong> depends on
+              the predicted risk score.
+            </li>
+            <li>
+              <strong className="text-navy">Location adjustment:</strong>{" "}
+              reflects the selected location-risk category.
+            </li>
+            <li>
+              <strong className="text-navy">Experience adjustment:</strong>{" "}
+              reflects worker experience.
+            </li>
+            <li>
+              <strong className="text-navy">Raw premium:</strong> base premium
+              plus the risk, location and experience adjustments.
+            </li>
+            <li>
+              <strong className="text-navy">Capped premium:</strong> the raw
+              premium limited to the prototype&apos;s ₹49–₹99 range.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-warning/20 bg-warning/5 p-3.5 text-xs leading-relaxed text-muted">
+          <Sparkles
             aria-hidden="true"
-            className="mt-0.5 size-3.5 shrink-0 text-lime/70"
+            className="mt-0.5 size-3.5 shrink-0 text-warning"
           />
-          Estimate saved in this browser. Activating creates a prototype policy
-          for this worker.
-        </p>
+          <p>
+            This is an estimated premium. It is not proof that an insurance
+            policy has been issued, and no payment is taken.
+          </p>
+        </div>
+
+        <ButtonLink
+          href={dashboardHref}
+          variant="secondary"
+          size="md"
+          className="mt-4 w-full"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          Back to dashboard
+        </ButtonLink>
       </div>
     </section>
-  );
-}
-
-function BreakdownRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-3">
-      <dt className="text-cream/55">{label}</dt>
-      <dd className="font-medium text-cream/90">{value}</dd>
-    </div>
   );
 }

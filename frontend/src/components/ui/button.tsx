@@ -16,13 +16,13 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-60";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-forest text-cream shadow-sm hover:bg-forest-dark",
+  primary: "bg-teal text-white shadow-sm hover:bg-teal-dark",
   secondary:
-    "border border-ink/15 bg-paper text-ink hover:border-forest/30 hover:bg-forest-light/60",
+    "border border-line bg-paper text-navy hover:border-teal/35 hover:bg-teal-light/60",
   inverse:
-    "border border-cream/20 bg-cream/10 text-cream hover:bg-cream/15",
-  lime: "bg-lime text-ink shadow-sm hover:bg-lime/85",
-  ghost: "text-ink hover:bg-ink/5",
+    "border border-white/20 bg-white/10 text-white hover:bg-white/15",
+  lime: "bg-white text-navy shadow-sm hover:bg-teal-light",
+  ghost: "text-navy hover:bg-navy/5",
   danger: "bg-danger text-white hover:bg-danger/90",
 };
 
