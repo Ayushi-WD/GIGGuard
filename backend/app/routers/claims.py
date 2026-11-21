@@ -17,14 +17,21 @@ from app.claims_schemas import (
     SimulateResponse,
 )
 from app.database import get_db
-from app.models import Claim, Payout, Policy, PolicyStatus, Worker
+from app.models import Claim, Payout, Policy, PolicyStatus, User, Worker
+from app.security import ensure_self_or_admin, get_current_user, require_admin, require_self_or_admin
 from app.services.claims import trigger_event
 
 router = APIRouter(tags=["claims"])
 
 
 @router.post("/policies", response_model=PolicyOut, status_code=201)
-def activate_policy(body: PolicyCreate, db: Session = Depends(get_db)):
+def activate_policy(
+    body: PolicyCreate,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
+):
+    ensure_self_or_admin(user, body.worker_id)
+
     if db.get(Worker, body.worker_id) is None:
         raise HTTPException(status_code=404, detail="Worker not found")
 
@@ -57,7 +64,11 @@ def activate_policy(body: PolicyCreate, db: Session = Depends(get_db)):
     return policy
 
 
-@router.get("/policies/worker/{worker_id}", response_model=list[PolicyOut])
+@router.get(
+    "/policies/worker/{worker_id}",
+    response_model=list[PolicyOut],
+    dependencies=[Depends(require_self_or_admin)],
+)
 def worker_policies(worker_id: UUID, db: Session = Depends(get_db)):
     """All policies for a worker, newest first. The frontend picks the active one."""
     return db.scalars(
@@ -67,13 +78,17 @@ def worker_policies(worker_id: UUID, db: Session = Depends(get_db)):
     ).all()
 
 
-@router.post("/simulate/disruption", response_model=SimulateResponse)
+@router.post(
+    "/simulate/disruption",
+    response_model=SimulateResponse,
+    dependencies=[Depends(require_admin)],
+)
 def simulate_disruption(
     body: SimulateRequest,
     auto_approve: bool = False,
     db: Session = Depends(get_db),
 ):
-    # TODO: restrict to admin users once auth is wired in
+    """Admin-only demo endpoint (when AUTH_ENFORCED is on)."""
     event, claims = trigger_event(
         db,
         city=body.city,
@@ -102,7 +117,11 @@ def simulate_disruption(
     )
 
 
-@router.get("/claims/worker/{worker_id}", response_model=list[ClaimOut])
+@router.get(
+    "/claims/worker/{worker_id}",
+    response_model=list[ClaimOut],
+    dependencies=[Depends(require_self_or_admin)],
+)
 def worker_claims(worker_id: UUID, db: Session = Depends(get_db)):
     return db.scalars(
         select(Claim)
@@ -111,7 +130,11 @@ def worker_claims(worker_id: UUID, db: Session = Depends(get_db)):
     ).all()
 
 
-@router.get("/payouts/worker/{worker_id}", response_model=list[PayoutOut])
+@router.get(
+    "/payouts/worker/{worker_id}",
+    response_model=list[PayoutOut],
+    dependencies=[Depends(require_self_or_admin)],
+)
 def worker_payouts(worker_id: UUID, db: Session = Depends(get_db)):
     """Money actually paid to a worker, newest first."""
     return db.scalars(

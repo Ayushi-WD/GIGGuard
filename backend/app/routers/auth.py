@@ -1,16 +1,16 @@
 """Authentication router for login, registration, and session info."""
 
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.auth_utils import hash_password, verify_password
+from app.auth_utils import create_token, hash_password, verify_password
 from app.database import get_db
 from app.models import User, UserRole, Worker
-from app.schemas import AuthResponse, UserLogin, UserPublic, UserSignUp, WorkerResponse
+from app.schemas import AuthResponse, UserLogin, UserPublic, UserSignUp
+from app.security import require_admin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -32,11 +32,7 @@ def login(payload: UserLogin, db: DatabaseSession):
     if user.worker_id:
         worker = db.get(Worker, user.worker_id)
 
-    return AuthResponse(
-        user=user,
-        worker=worker,
-        token=f"token_{user.id}",
-    )
+    return AuthResponse(user=user, worker=worker, token=create_token(user.id))
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -72,13 +68,9 @@ def signup(payload: UserSignUp, db: DatabaseSession):
     db.refresh(worker)
     db.refresh(user)
 
-    return AuthResponse(
-        user=user,
-        worker=worker,
-        token=f"token_{user.id}",
-    )
+    return AuthResponse(user=user, worker=worker, token=create_token(user.id))
 
 
 @router.get("/users", response_model=list[UserPublic])
-def list_users(db: DatabaseSession):
+def list_users(db: DatabaseSession, _admin: User | None = Depends(require_admin)):
     return db.scalars(select(User).order_by(User.created_at)).all()
