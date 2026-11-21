@@ -1,4 +1,4 @@
-"""Request and response shapes for the policy, simulation and claims endpoints."""
+"""Request and response shapes for the policy, simulation, claims and payout endpoints."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -53,3 +53,13 @@ class ClaimOut(BaseModel):
     status: ClaimStatus
     fraud_score: float | None
     created_at: datetime
+
+
+class PayoutOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    claim_id: UUID
+    worker_id: UUID
+    amount: Decimal
+    paid_at: datetime

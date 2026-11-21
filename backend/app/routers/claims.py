@@ -1,4 +1,4 @@
-"""Policy activation, disruption simulation and claim listing endpoints."""
+"""Policy activation, disruption simulation, claim, policy and payout endpoints."""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -10,13 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.claims_schemas import (
     ClaimOut,
+    PayoutOut,
     PolicyCreate,
     PolicyOut,
     SimulateRequest,
     SimulateResponse,
 )
-from app.database import get_db  # confirm this name with the check command below
-from app.models import Claim, Policy, PolicyStatus, Worker
+from app.database import get_db
+from app.models import Claim, Payout, Policy, PolicyStatus, Worker
 from app.services.claims import trigger_event
 
 router = APIRouter(tags=["claims"])
@@ -54,6 +55,16 @@ def activate_policy(body: PolicyCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(policy)
     return policy
+
+
+@router.get("/policies/worker/{worker_id}", response_model=list[PolicyOut])
+def worker_policies(worker_id: UUID, db: Session = Depends(get_db)):
+    """All policies for a worker, newest first. The frontend picks the active one."""
+    return db.scalars(
+        select(Policy)
+        .where(Policy.worker_id == worker_id)
+        .order_by(Policy.week_start.desc(), Policy.created_at.desc())
+    ).all()
 
 
 @router.post("/simulate/disruption", response_model=SimulateResponse)
@@ -97,4 +108,14 @@ def worker_claims(worker_id: UUID, db: Session = Depends(get_db)):
         select(Claim)
         .where(Claim.worker_id == worker_id)
         .order_by(Claim.created_at.desc())
+    ).all()
+
+
+@router.get("/payouts/worker/{worker_id}", response_model=list[PayoutOut])
+def worker_payouts(worker_id: UUID, db: Session = Depends(get_db)):
+    """Money actually paid to a worker, newest first."""
+    return db.scalars(
+        select(Payout)
+        .where(Payout.worker_id == worker_id)
+        .order_by(Payout.paid_at.desc())
     ).all()
