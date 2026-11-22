@@ -64,8 +64,7 @@ def test_policy_listed_after_activation(ctx):
     policies = client.get(f"/policies/worker/{worker_id}").json()
     assert len(policies) == 1
     assert policies[0]["status"] == "active"
-    assert Decimal(policies[0]["premium"]) == Decimal("70.00")
-
+    assert Decimal("49") <= Decimal(policies[0]["premium"]) <= Decimal("99")
 
 def test_payout_listed_only_after_approval(ctx):
     client, engine = ctx

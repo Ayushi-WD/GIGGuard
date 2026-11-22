@@ -11,8 +11,9 @@ from app.models import ClaimStatus, DisruptionType, PolicyStatus
 
 class PolicyCreate(BaseModel):
     worker_id: UUID
-    premium: Decimal = Field(ge=49, le=99, decimal_places=2)
-    risk_score: float = Field(ge=0, le=100)
+    # Accepted for backward compatibility but IGNORED: the server prices the policy.
+    premium: Decimal | None = Field(default=None, ge=49, le=99, decimal_places=2)
+    risk_score: float | None = Field(default=None, ge=0, le=100)
     week_start: date | None = None  # defaults to today; coverage lasts 7 days
 
 
@@ -26,6 +27,11 @@ class PolicyOut(BaseModel):
     premium: Decimal
     risk_score: float
     status: PolicyStatus
+
+
+class PolicyCreatedOut(PolicyOut):
+    """Returned when a policy is activated: shows how the premium was worked out."""
+    pricing_method: str
 
 
 class SimulateRequest(BaseModel):

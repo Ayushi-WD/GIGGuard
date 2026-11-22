@@ -47,3 +47,11 @@ class PricingResponse(BaseModel):
     raw_premium: Decimal
     final_weekly_premium: Decimal
     calculation_method: Literal["simulated_risk_score"] = "simulated_risk_score"
+
+
+
+class QuoteResponse(BaseModel):
+    worker_id: UUID
+    risk_score: Decimal
+    weekly_premium: Decimal
+    pricing_method: str

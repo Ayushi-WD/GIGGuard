@@ -12,6 +12,7 @@ from app.claims_schemas import (
     ClaimOut,
     PayoutOut,
     PolicyCreate,
+    PolicyCreatedOut,
     PolicyOut,
     SimulateRequest,
     SimulateResponse,
@@ -20,19 +21,23 @@ from app.database import get_db
 from app.models import Claim, Payout, Policy, PolicyStatus, User, Worker
 from app.security import ensure_self_or_admin, get_current_user, require_admin, require_self_or_admin
 from app.services.claims import trigger_event
+from app.services.policy_pricing import quote_policy
 
 router = APIRouter(tags=["claims"])
 
 
-@router.post("/policies", response_model=PolicyOut, status_code=201)
+@router.post("/policies", response_model=PolicyCreatedOut, status_code=201)
 def activate_policy(
     body: PolicyCreate,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user),
 ):
+    """Activate one week of cover. The premium is calculated by the server,
+    any premium or risk_score in the request is ignored."""
     ensure_self_or_admin(user, body.worker_id)
 
-    if db.get(Worker, body.worker_id) is None:
+    worker = db.get(Worker, body.worker_id)
+    if worker is None:
         raise HTTPException(status_code=404, detail="Worker not found")
 
     start = body.week_start or date.today()
@@ -51,17 +56,21 @@ def activate_policy(
             status_code=409, detail="Worker already has an active policy for this week"
         )
 
+    quote = quote_policy(db, worker, today=start)
     policy = Policy(
         worker_id=body.worker_id,
         week_start=start,
         week_end=end,
-        premium=body.premium,
-        risk_score=body.risk_score,
+        premium=quote.premium,
+        risk_score=float(quote.risk_score),
     )
     db.add(policy)
     db.commit()
     db.refresh(policy)
-    return policy
+    return PolicyCreatedOut(
+        **PolicyOut.model_validate(policy).model_dump(),
+        pricing_method=quote.method,
+    )
 
 
 @router.get(
