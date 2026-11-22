@@ -29,3 +29,4 @@ Thumbs.db
 # Reproducible ML outputs; retain small evaluation reports and source code
 ml_models/data/
 ml_models/artifacts/
+fraud_engine/data/
