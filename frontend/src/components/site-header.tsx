@@ -69,7 +69,7 @@ export function SiteHeader() {
   } else {
     navLinks = [
       { href: dashboardHref, label: "Dashboard" },
-      { href: `${dashboardHref}#profile`, label: "My Profile" },
+      { href: "/policy", label: "Protection & Claims" },
       { href: premiumHref, label: "Premium Calculator" },
       { href: "/about#faq", label: "Help" },
     ];

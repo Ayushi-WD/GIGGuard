@@ -1,16 +1,23 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect -- Synchronizing default simulation city with loaded workers. */
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   ArrowRight,
   BadgeIndianRupee,
+  CheckCircle2,
   Clock3,
+  LoaderCircle,
   MapPin,
   RefreshCw,
-  ShieldAlert,
+  Sparkles,
   Users,
+  Zap,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
@@ -22,19 +29,80 @@ import {
   LoadingState,
   PlatformBadge,
 } from "@/components/ui/feedback";
+import { ApiError, simulateDisruption } from "@/lib/api";
 import {
   formatExperience,
   formatINR,
   initials,
 } from "@/lib/format";
 import { getSavedEstimate } from "@/lib/storage";
+import type { DisruptionType, SimulateResponse } from "@/lib/types";
 import { useAuth } from "@/lib/use-auth";
 import { useWorkers } from "@/lib/use-worker";
+
+const DISRUPTION_UNITS: Record<DisruptionType, { label: string; unit: string; defaultValue: number }> = {
+  rain: { label: "Rainfall", unit: "mm of rain", defaultValue: 60 },
+  heat: { label: "Extreme Heat", unit: "°C temperature", defaultValue: 45 },
+  aqi: { label: "Air Quality (AQI)", unit: "AQI index", defaultValue: 350 },
+  flood: { label: "Flood Alert", unit: "1 for active", defaultValue: 1 },
+  curfew: { label: "Curfew / Civic", unit: "1 for active", defaultValue: 1 },
+};
 
 export default function AdminPage() {
   const router = useRouter();
   const { user, isLoggedIn, isAdmin, loading: authLoading, logout } = useAuth();
   const { workers, loading, error, reload } = useWorkers();
+
+  // Disruption simulation state
+  const [simCity, setSimCity] = useState("Delhi");
+  const [simDisruption, setSimDisruption] = useState<DisruptionType>("rain");
+  const [simValue, setSimValue] = useState(60);
+  const [simDuration, setSimDuration] = useState(8);
+  const [simAutoApprove, setSimAutoApprove] = useState(true);
+  const [simulating, setSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<SimulateResponse | null>(null);
+  const [simError, setSimError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (workers.length > 0 && !simCity) {
+      setSimCity(workers[0].city);
+    }
+  }, [workers, simCity]);
+
+  function handleDisruptionChange(type: DisruptionType) {
+    setSimDisruption(type);
+    setSimValue(DISRUPTION_UNITS[type].defaultValue);
+    setSimResult(null);
+    setSimError(null);
+  }
+
+  async function handleSimulate(e: React.FormEvent) {
+    e.preventDefault();
+    setSimulating(true);
+    setSimError(null);
+    setSimResult(null);
+
+    try {
+      const res = await simulateDisruption(
+        {
+          city: simCity.trim(),
+          disruption_type: simDisruption,
+          value: Number(simValue),
+          duration_hours: Number(simDuration),
+        },
+        simAutoApprove,
+      );
+      setSimResult(res);
+    } catch (err) {
+      setSimError(
+        err instanceof ApiError
+          ? err.message
+          : "Failed to simulate disruption. Please check admin permissions.",
+      );
+    } finally {
+      setSimulating(false);
+    }
+  }
 
   if (authLoading) {
     return (
@@ -185,11 +253,10 @@ export default function AdminPage() {
               detail="Across registered workers"
             />
             <MetricCard
-              icon={ShieldAlert}
-              label="Claims & payouts"
-              value="Coming soon"
-              detail="Not implemented in this prototype"
-              pending
+              icon={Zap}
+              label="Parametric Engine"
+              value="Live"
+              detail="Automated trigger simulation"
             />
           </div>
 
@@ -316,11 +383,208 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-pending/20 bg-pending/5 px-4 py-3 text-xs leading-relaxed text-muted">
-            <strong className="text-navy">Claims and payouts:</strong> the admin
-            review workflow is not implemented. No approve, reject or payout
-            action is available.
-          </div>
+          {/* Disruption Trigger Simulator Demo Section */}
+          <section className="mt-8 rounded-3xl border border-line bg-white p-6 shadow-card sm:p-8">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div>
+                <p className="eyebrow flex items-center gap-1.5">
+                  <Sparkles aria-hidden="true" className="size-3.5 text-teal" />
+                  Admin Demo Panel
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-navy">
+                  Simulate Parametric Disruption
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted max-w-xl">
+                  Inject simulated environmental events (heavy rainfall, extreme heat, severe AQI spikes, floods, or curfew) into a target city.
+                  When triggered, covered workers in that city receive auto-generated claims and instant payouts.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal-light/50 px-3 py-1 text-xs font-semibold text-teal-dark">
+                POST /simulate/disruption
+              </span>
+            </div>
+
+            <form onSubmit={handleSimulate} className="mt-6 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {/* City */}
+                <div>
+                  <label
+                    htmlFor="sim-city"
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2"
+                  >
+                    Target City
+                  </label>
+                  <input
+                    id="sim-city"
+                    type="text"
+                    value={simCity}
+                    onChange={(e) => setSimCity(e.target.value)}
+                    placeholder="e.g. Delhi, Bengaluru"
+                    required
+                    className="w-full rounded-xl border border-line bg-mist/50 px-3.5 py-2.5 text-sm font-medium text-navy placeholder:text-muted focus:border-teal focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                {/* Disruption Type */}
+                <div>
+                  <label
+                    htmlFor="sim-type"
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2"
+                  >
+                    Disruption Type
+                  </label>
+                  <select
+                    id="sim-type"
+                    value={simDisruption}
+                    onChange={(e) =>
+                      handleDisruptionChange(e.target.value as DisruptionType)
+                    }
+                    className="w-full rounded-xl border border-line bg-mist/50 px-3.5 py-2.5 text-sm font-medium text-navy focus:border-teal focus:bg-white focus:outline-none"
+                  >
+                    <option value="rain">Rain (mm)</option>
+                    <option value="heat">Heat (°C)</option>
+                    <option value="aqi">Air Quality (AQI)</option>
+                    <option value="flood">Flood Alert (1)</option>
+                    <option value="curfew">Curfew / Civic (1)</option>
+                  </select>
+                </div>
+
+                {/* Disruption Value */}
+                <div>
+                  <label
+                    htmlFor="sim-value"
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2"
+                  >
+                    Value ({DISRUPTION_UNITS[simDisruption]?.unit ?? "units"})
+                  </label>
+                  <input
+                    id="sim-value"
+                    type="number"
+                    step="any"
+                    value={simValue}
+                    onChange={(e) => setSimValue(Number(e.target.value))}
+                    required
+                    className="w-full rounded-xl border border-line bg-mist/50 px-3.5 py-2.5 text-sm font-medium text-navy focus:border-teal focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                {/* Duration Hours */}
+                <div>
+                  <label
+                    htmlFor="sim-duration"
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2"
+                  >
+                    Duration (1–24 hrs)
+                  </label>
+                  <input
+                    id="sim-duration"
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={simDuration}
+                    onChange={(e) => setSimDuration(Number(e.target.value))}
+                    required
+                    className="w-full rounded-xl border border-line bg-mist/50 px-3.5 py-2.5 text-sm font-medium text-navy focus:border-teal focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Auto Approve Checkbox */}
+              <div className="flex items-center gap-2.5 pt-1">
+                <input
+                  id="sim-auto-approve"
+                  type="checkbox"
+                  checked={simAutoApprove}
+                  onChange={(e) => setSimAutoApprove(e.target.checked)}
+                  className="size-4 rounded border-line text-teal focus:ring-teal"
+                />
+                <label
+                  htmlFor="sim-auto-approve"
+                  className="text-xs font-medium text-navy cursor-pointer select-none"
+                >
+                  Auto-approve triggered claims immediately (<code className="text-teal-dark font-mono">auto_approve=true</code>)
+                </label>
+              </div>
+
+              {simError ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-xs text-danger flex items-start gap-2.5"
+                >
+                  <AlertCircle aria-hidden="true" className="size-4 shrink-0 mt-0.5" />
+                  <span>{simError}</span>
+                </div>
+              ) : null}
+
+              {simResult ? (
+                <div
+                  role="status"
+                  className={`rounded-2xl border p-4 text-xs transition ${
+                    simResult.triggered
+                      ? "border-success/30 bg-success/5 text-navy"
+                      : "border-warning/30 bg-warning/5 text-navy"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2
+                      aria-hidden="true"
+                      className={`size-4 ${
+                        simResult.triggered ? "text-success" : "text-warning"
+                      }`}
+                    />
+                    <strong className="text-sm">
+                      {simResult.triggered
+                        ? "Disruption Threshold Triggered!"
+                        : "Threshold Not Triggered"}
+                    </strong>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-line/40 pt-3">
+                    <div>
+                      <span className="text-muted block">Severity Assessment</span>
+                      <span className="font-semibold text-navy">
+                        {simResult.severity_pct}%
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block">Claims Created</span>
+                      <span className="font-semibold text-navy">
+                        {simResult.claims_created}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block">Total Payout</span>
+                      <span className="font-semibold text-success">
+                        {formatINR(simResult.total_payout, { decimals: 2 })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block">Event Reference</span>
+                      <span className="font-mono text-[0.7rem] text-muted">
+                        {simResult.event_id ? simResult.event_id.slice(0, 10) + "…" : "None"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="pt-2">
+                <Button type="submit" size="md" disabled={simulating}>
+                  {simulating ? (
+                    <>
+                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                      Simulating event…
+                    </>
+                  ) : (
+                    <>
+                      <Zap aria-hidden="true" className="size-4" />
+                      Simulate Disruption Event
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </section>
+
         </>
       )}
     </div>

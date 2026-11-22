@@ -112,3 +112,69 @@ export const LOCATION_RISK_COPY: Record<
     description: "Frequent rain, heat or pollution disruptions.",
   },
 };
+
+export type BackendPolicyStatus = "active" | "expired" | "cancelled";
+
+export interface PolicyRecord {
+  id: string;
+  worker_id: string;
+  week_start: string;
+  week_end: string;
+  premium: string | number;
+  risk_score: number;
+  status: BackendPolicyStatus;
+  pricing_method?: string;
+}
+
+export type BackendClaimStatus = "pending" | "approved" | "review" | "rejected";
+
+export const CLAIM_STATUS_DISPLAY: Record<BackendClaimStatus, string> = {
+  pending: "Checking",
+  approved: "Approved",
+  review: "Under review",
+  rejected: "Rejected",
+};
+
+export interface BackendClaim {
+  id: string;
+  policy_id: string;
+  event_id: string;
+  payout_amount: string;
+  status: BackendClaimStatus;
+  fraud_score: number | null;
+  created_at: string;
+}
+
+export interface BackendPayout {
+  id: string;
+  claim_id: string;
+  worker_id: string;
+  amount: string;
+  paid_at: string;
+}
+
+export const DISRUPTION_TYPES = [
+  "rain",
+  "heat",
+  "aqi",
+  "flood",
+  "curfew",
+] as const;
+
+export type DisruptionType = (typeof DISRUPTION_TYPES)[number];
+
+export interface SimulateRequest {
+  city: string;
+  disruption_type: DisruptionType;
+  value: number;
+  duration_hours?: number;
+}
+
+export interface SimulateResponse {
+  triggered: boolean;
+  severity_pct: number;
+  event_id: string | null;
+  claims_created: number;
+  total_payout: string | number;
+}
+

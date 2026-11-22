@@ -4,7 +4,10 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 from fastapi import Request
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
@@ -14,7 +17,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 # Load backend/.env for the running app. Never under pytest, so tests
 # always stay on SQLite and cannot reach the hosted database.
-if "pytest" not in sys.modules:
+if "pytest" not in sys.modules and load_dotenv is not None:
     load_dotenv(BACKEND_DIR / ".env", override=False)
 
 

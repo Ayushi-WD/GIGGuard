@@ -15,7 +15,6 @@ import {
   Check,
   Clock3,
   Info,
-  LockKeyhole,
   MapPin,
   ShieldCheck,
   Sparkles,
@@ -29,6 +28,7 @@ import {
   LoadingState,
   PlatformBadge,
 } from "@/components/ui/feedback";
+import { getWorkerPolicies } from "@/lib/api";
 import {
   formatDate,
   formatExperience,
@@ -37,7 +37,11 @@ import {
   initials,
 } from "@/lib/format";
 import { getSavedEstimate, type SavedEstimate } from "@/lib/storage";
-import { LOCATION_RISK_COPY, type LocationRisk } from "@/lib/types";
+import {
+  LOCATION_RISK_COPY,
+  type LocationRisk,
+  type PolicyRecord,
+} from "@/lib/types";
 import { useWorker } from "@/lib/use-worker";
 
 const steps = [
@@ -93,12 +97,16 @@ export default function WorkerDashboardPage() {
   const [savedEstimate, setSavedEstimate] = useState<SavedEstimate | null>(
     null,
   );
+  const [policies, setPolicies] = useState<PolicyRecord[]>([]);
 
   useEffect(() => {
     if (!worker) {
       return;
     }
     setSavedEstimate(getSavedEstimate(worker.id));
+    getWorkerPolicies(worker.id)
+      .then((data) => setPolicies(data))
+      .catch(() => setPolicies([]));
   }, [worker]);
 
   if (loading) {
@@ -133,6 +141,7 @@ export default function WorkerDashboardPage() {
   const premium = savedEstimate
     ? Number(savedEstimate.estimate.final_weekly_premium)
     : null;
+  const hasActivePolicy = policies.some((p) => p.status === "active");
 
   return (
     <div className="page-container py-10 sm:py-14">
@@ -209,9 +218,21 @@ export default function WorkerDashboardPage() {
         <OverviewCard
           icon={ShieldCheck}
           label="Protection status"
-          value="Coming soon"
-          detail="Trigger detection and payouts are not built yet"
-          status="pending"
+          value={
+            hasActivePolicy
+              ? "Cover Active"
+              : savedEstimate
+                ? "Ready to activate"
+                : "Not protected"
+          }
+          detail={
+            hasActivePolicy
+              ? "Parametric protection active"
+              : savedEstimate
+                ? "Estimate calculated · activate cover"
+                : "Calculate premium to activate cover"
+          }
+          status={hasActivePolicy ? "success" : "pending"}
           href="/policy"
         />
       </section>
@@ -336,16 +357,19 @@ export default function WorkerDashboardPage() {
 
         <div className="mt-5 flex flex-col justify-between gap-3 rounded-2xl border border-line bg-white p-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-pending/10 text-pending">
-              <LockKeyhole aria-hidden="true" className="size-4" />
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-light text-teal-dark">
+              <ShieldCheck aria-hidden="true" className="size-4" />
             </span>
             <div>
               <p className="text-sm font-semibold text-navy">
-                Disruption alerts &amp; claims are coming soon
+                {hasActivePolicy
+                  ? "Parametric protection is live"
+                  : "Zero-touch parametric coverage"}
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-muted">
-                Weather triggers, claim status and payout history are not active
-                in this prototype.
+                {hasActivePolicy
+                  ? "Your policy is active. Automated claims and direct payouts trigger on environmental events."
+                  : "Calculate your premium and activate weekly protection to be covered against disruptions."}
               </p>
             </div>
           </div>
@@ -353,7 +377,7 @@ export default function WorkerDashboardPage() {
             href="/policy"
             className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-teal hover:underline"
           >
-            See what is planned
+            {hasActivePolicy ? "View policy & claims" : "Manage coverage"}
             <ArrowRight aria-hidden="true" className="size-3.5" />
           </Link>
         </div>

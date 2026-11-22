@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/format";
-import type { ClaimStatus } from "@/lib/storage";
-import type { Platform } from "@/lib/types";
+import type { BackendClaimStatus, Platform } from "@/lib/types";
 
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
@@ -115,31 +114,66 @@ export function PlatformBadge({
   );
 }
 
-const claimStyles: Record<ClaimStatus, string> = {
-  "Under review": "bg-heat/10 text-heat ring-heat/20",
-  Approved: "bg-forest-light text-forest ring-forest/20",
-  Rejected: "bg-danger/10 text-danger ring-danger/20",
+const claimStyles: Record<string, { badge: string; dot: string; label: string }> = {
+  pending: {
+    badge: "bg-pending/10 text-pending ring-pending/25",
+    dot: "bg-pending",
+    label: "Checking",
+  },
+  approved: {
+    badge: "bg-success/10 text-success ring-success/25",
+    dot: "bg-success",
+    label: "Approved",
+  },
+  review: {
+    badge: "bg-warning/10 text-warning ring-warning/25",
+    dot: "bg-warning",
+    label: "Under review",
+  },
+  rejected: {
+    badge: "bg-danger/10 text-danger ring-danger/25",
+    dot: "bg-danger",
+    label: "Rejected",
+  },
+  // Backward compatibility with previous display names
+  "Under review": {
+    badge: "bg-warning/10 text-warning ring-warning/25",
+    dot: "bg-warning",
+    label: "Under review",
+  },
+  Approved: {
+    badge: "bg-success/10 text-success ring-success/25",
+    dot: "bg-success",
+    label: "Approved",
+  },
+  Rejected: {
+    badge: "bg-danger/10 text-danger ring-danger/25",
+    dot: "bg-danger",
+    label: "Rejected",
+  },
 };
 
-export function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
+export function ClaimStatusBadge({
+  status,
+}: {
+  status: BackendClaimStatus | string;
+}) {
+  const meta =
+    claimStyles[status] ?? {
+      badge: "bg-mist text-muted ring-line",
+      dot: "bg-muted",
+      label: status,
+    };
+
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ring-1 ring-inset",
-        claimStyles[status],
+        meta.badge,
       )}
     >
-      <span
-        className={cn(
-          "size-1.5 rounded-full",
-          status === "Approved"
-            ? "bg-forest"
-            : status === "Rejected"
-              ? "bg-danger"
-              : "bg-heat",
-        )}
-      />
-      {status}
+      <span className={cn("size-1.5 rounded-full", meta.dot)} />
+      {meta.label}
     </span>
   );
 }
