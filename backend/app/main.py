@@ -15,6 +15,7 @@ from app.routers.auth import router as auth_router
 from app.routers.claims import router as claims_router
 from app.routers.pricing import router as pricing_router
 from app.routers.risk import router as risk_router
+from app.routers.signals import router as signals_router
 from app.routers.workers import router as workers_router
 
 logger = logging.getLogger("gig_guard")
@@ -78,6 +79,7 @@ app.include_router(workers_router)
 app.include_router(pricing_router)
 app.include_router(risk_router)
 app.include_router(claims_router)
+app.include_router(signals_router)
 
 
 @app.get("/")

@@ -1,12 +1,12 @@
-"""Persistent worker, user, policy, disruption, claim and payout tables, including exact INR storage."""
+"""Persistent worker, user, policy, disruption, claim, payout, location and review tables."""
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, Enum as SQLEnum, Float, ForeignKey
-from sqlalchemy import Integer, Numeric, String, UniqueConstraint, Uuid
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Enum as SQLEnum, Float, ForeignKey
+from sqlalchemy import Integer, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -100,7 +100,7 @@ class User(Base):
 
 
 # ---------------------------------------------------------------------------
-# Claims layer (new)
+# Claims layer
 # ---------------------------------------------------------------------------
 
 class DisruptionType(str, Enum):
@@ -191,5 +191,48 @@ class Payout(Base):
     worker_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workers.id", ondelete="CASCADE"), index=True)
     amount: Mapped[Decimal] = mapped_column(INRAmount(), nullable=False)
     paid_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Signals used by the fraud engine
+# ---------------------------------------------------------------------------
+
+class LocationPing(Base):
+    """A GPS position reported by a worker's device."""
+    __tablename__ = "location_pings"
+    __table_args__ = (
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="valid_latitude"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="valid_longitude"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    worker_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("workers.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    accuracy_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="device")  # device | simulated
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class Review(Base):
+    """A customer review of one of a worker's deliveries."""
+    __tablename__ = "reviews"
+    __table_args__ = (CheckConstraint("rating >= 1 AND rating <= 5", name="valid_rating"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    worker_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("workers.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    on_time: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
